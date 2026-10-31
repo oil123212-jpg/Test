@@ -2,7 +2,7 @@
 
 물리 디바이스 대신 **웹 브라우저에서 사용하는 Phase 0**입니다. 설치할 하드웨어 없이 데모 음원이나 PC/휴대폰 마이크로 녹음·재생을 점검합니다. 실제 AI 응답과 외부 음성 전송은 아직 연결하지 않습니다.
 
-**현재 배포 플랫폼은 Railway입니다.** 루트 Dockerfile과 railway.json을 사용합니다. [Railway 설정](docs/railway_deployment.md)을 참고하세요.
+**현재 배포 플랫폼은 Railway이며, 배포 브랜치는 `main`입니다.** 루트 Dockerfile과 railway.json을 사용합니다. [Railway 설정](docs/railway_deployment.md)을 참고하세요.
 
 로컬에서는 Node.js 24 이상과 npm을 설치한 뒤 저장소 루트에서 실행하세요.
 
@@ -19,4 +19,4 @@ npm run dev
 - [웹 전환 설계 및 Phase 1 준비 계획](docs/web_transition.md)
 - [기존 Python 기반](ai_friend/README.md): 유지되지만 웹 실행에는 Python/PortAudio/Pi가 필요하지 않습니다.
 
-`v0.1.0`은 기존 기준 버전, `release/web-v0.2.0` 및 `v0.2.0`은 GitHub Pages 배포를 지원하는 별도 버전입니다. `gh-pages`는 정적 배포 파일용입니다. 사이트 활성화 방법과 검증 범위는 [v0.2.0 안내](docs/releases/v0.2.0.md)를 참고하세요.
+`main`에서 현재 Railway용 웹사이트를 배포합니다. `v0.1.0`과 `v0.2.0` 태그 및 `release/web-v0.2.0` 브랜치는 이전 버전 확인용으로 유지합니다. 현재 사이트를 열려면 [Railway 배포 안내](docs/railway_deployment.md)를 따르세요.
