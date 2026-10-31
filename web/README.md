@@ -65,7 +65,7 @@ Linux CI에서 브라우저 시스템 라이브러리가 없으면 관리 가능
 
 ## 정적 배포
 
-비공개 저장소를 유지하면서 무료 호스팅을 쓰려면 [Netlify 수동 배포 안내](../docs/free_hosting.md)를 우선 참고하세요. GitHub Pages 활성화나 저장소 공개 전환이 필요하지 않습니다.
+현재 배포 대상은 **Railway**입니다. [Railway 배포 안내](../docs/railway_deployment.md)를 우선 참고하세요. 저장소 루트의 Dockerfile/railway.json과 `npm start` 서버를 사용하며, GitHub Pages/Netlify 설정은 필요하지 않습니다. 아래 정적 호스팅 설명은 다른 플랫폼용 참고입니다.
 
 ```bash
 npm run build

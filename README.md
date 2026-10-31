@@ -2,7 +2,9 @@
 
 물리 디바이스 대신 **웹 브라우저에서 사용하는 Phase 0**입니다. 설치할 하드웨어 없이 데모 음원이나 PC/휴대폰 마이크로 녹음·재생을 점검합니다. 실제 AI 응답과 외부 음성 전송은 아직 연결하지 않습니다.
 
-Node.js 24 이상과 npm을 설치한 뒤 저장소 루트에서 실행하세요.
+**현재 배포 플랫폼은 Railway입니다.** 루트 Dockerfile과 railway.json을 사용합니다. [Railway 설정](docs/railway_deployment.md)을 참고하세요.
+
+로컬에서는 Node.js 24 이상과 npm을 설치한 뒤 저장소 루트에서 실행하세요.
 
 ```bash
 cd web
@@ -12,7 +14,7 @@ npm run dev
 
 터미널에서 안내하는 개발 서버를 브라우저로 여세요. 기본 포트는 5173입니다. 다른 기기나 공개 도메인에서 실제 마이크를 쓰려면 **HTTPS**가 필요합니다. 클라우드 테스트는 브라우저의 가상 마이크를 사용하며, 사용자의 실제 장치 청취를 검증하지는 않습니다.
 
-- [무료 배포 방법 — 비공개 저장소 유지](docs/free_hosting.md)
+- [Railway 배포 안내 — 현재 배포 대상](docs/railway_deployment.md)
 - [웹 실행·테스트·배포 안내](web/README.md)
 - [웹 전환 설계 및 Phase 1 준비 계획](docs/web_transition.md)
 - [기존 Python 기반](ai_friend/README.md): 유지되지만 웹 실행에는 Python/PortAudio/Pi가 필요하지 않습니다.
