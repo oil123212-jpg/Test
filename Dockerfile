@@ -1,10 +1,7 @@
 FROM node:24-bookworm-slim AS build
 WORKDIR /app
 COPY web/package.json web/package-lock.json ./
-RUN --mount=type=secret,id=build_ca \
-    if [ -s /run/secrets/build_ca ]; then \
-      NODE_EXTRA_CA_CERTS=/run/secrets/build_ca npm ci; \
-    else npm ci; fi
+RUN npm ci
 COPY web/index.html web/tsconfig.json web/vite.config.ts ./
 COPY web/src ./src
 COPY web/public ./public

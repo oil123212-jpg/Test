@@ -37,7 +37,9 @@ Railway CLI를 사용한다면 자신의 계정에서 `railway login`, `railway 
 
 Node 배포 서버 테스트 7개, 해당 서버를 대상으로 한 데스크톱/모바일 Chromium 테스트 30개가 통과했습니다. 실제 Railway 계정의 배포/HTTPS 주소 생성은 별도이며 완료로 표시하지 않습니다.
 
-Docker 이미지 빌드 및 비관리자 컨테이너 실행도 검증했습니다. 임의 PORT=43123에서 health/HTML/worklet 응답이 모두 200이었습니다. 이 클라우드의 TLS 중계 인증서는 호스트 신뢰 저장소를 임시 build_ca secret으로 전달해 검증했으며 TLS 검증을 비활성화하지 않았습니다. 일반 Railway 빌드는 추가 인증서 없이 실행하고, 사설 중계가 있는 빌드 환경에서만 신뢰할 수 있는 CA를 build_ca로 제공할 수 있습니다. 인증서 묶음은 소스/이미지에 복사하지 않습니다.
+로컬에서 Docker 이미지와 비관리자 컨테이너 실행을 검증했고, PORT=43123의 health/HTML/worklet 응답이 모두 200이었습니다. 로컬 성공은 Railway 빌더 호환성을 증명하지는 않습니다.
+
+Railway 빌드 로그에서 `--mount=type=secret,id=build_ca`가 지원되지 않는 것을 확인했습니다. 배포 Dockerfile은 해당 로컬 전용 설정을 제거한 일반 `RUN npm ci`를 사용합니다. TLS 및 패키지 무결성 검증은 유지합니다. 사설 인증서가 필요한 로컬 검증은 별도의 임시 Dockerfile에서만 수행하고 배포 Dockerfile에 secret 마운트를 추가하지 않습니다.
 
 ## main 반영 확인
 
