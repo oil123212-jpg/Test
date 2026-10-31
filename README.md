@@ -12,6 +12,7 @@ npm run dev
 
 터미널에서 안내하는 개발 서버를 브라우저로 여세요. 기본 포트는 5173입니다. 다른 기기나 공개 도메인에서 실제 마이크를 쓰려면 **HTTPS**가 필요합니다. 클라우드 테스트는 브라우저의 가상 마이크를 사용하며, 사용자의 실제 장치 청취를 검증하지는 않습니다.
 
+- [무료 배포 방법 — 비공개 저장소 유지](docs/free_hosting.md)
 - [웹 실행·테스트·배포 안내](web/README.md)
 - [웹 전환 설계 및 Phase 1 준비 계획](docs/web_transition.md)
 - [기존 Python 기반](ai_friend/README.md): 유지되지만 웹 실행에는 Python/PortAudio/Pi가 필요하지 않습니다.

@@ -65,6 +65,8 @@ Linux CI에서 브라우저 시스템 라이브러리가 없으면 관리 가능
 
 ## 정적 배포
 
+비공개 저장소를 유지하면서 무료 호스팅을 쓰려면 [Netlify 수동 배포 안내](../docs/free_hosting.md)를 우선 참고하세요. GitHub Pages 활성화나 저장소 공개 전환이 필요하지 않습니다.
+
 ```bash
 npm run build
 npm run preview
