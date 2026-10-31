@@ -22,3 +22,16 @@ test('worklet mixes mono, limits frames, transfers ownership and outputs no loop
   expect(processor.process(input, output)).toBe(false);
   expect(messages).toHaveLength(1);
 });
+test('realtime processor emits exact 20ms little-endian PCM without loopback', () => {
+  let Processor: any; const messages: any[]=[];
+  runInNewContext(readFileSync('public/realtime-worklet.js','utf8'), {
+    Float32Array, ArrayBuffer, DataView,
+    AudioWorkletProcessor: class {port={postMessage:(message:any, transfer:ArrayBuffer[])=>{expect(transfer[0]).toBe(message.pcm);messages.push(message);}};},
+    registerProcessor:(_name:string,processor:any)=>{Processor=processor;},
+  });
+  const processor=new Processor();const output=[[new Float32Array(480)]];
+  processor.process([[new Float32Array(480).fill(-1)]],output);
+  expect(messages).toHaveLength(1);expect(messages[0].pcm.byteLength).toBe(960);
+  expect(new DataView(messages[0].pcm).getInt16(0,true)).toBe(-32768);
+  expect(output[0][0].every(value=>value===0)).toBe(true);
+});

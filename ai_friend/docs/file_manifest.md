@@ -1,6 +1,6 @@
 # 프로젝트 파일 목록
 
-2026-10-31 기준 소스·설정·문서 80개 파일입니다. 현재 배포 대상은 Railway이며, 가상환경·node_modules·빌드·테스트 산출물·다운로드 ZIP은 제외합니다.
+2026-10-31 v0.3 Realtime 음성 대화 기준 소스·설정·문서 88개 파일입니다. 현재 배포 대상은 Railway입니다. 개발 의존성·빌드·테스트 산출물은 제외합니다.
 
 - `.dockerignore`
 - `.github/workflows/pages.yml`
@@ -48,6 +48,7 @@
 - `ai_friend/tests/test_privacy.py`
 - `docs/free_hosting.md`
 - `docs/railway_deployment.md`
+- `docs/realtime_setup.md`
 - `docs/releases/v0.2.0.md`
 - `docs/web_transition.md`
 - `railway.json`
@@ -66,19 +67,26 @@
 - `web/public/_headers`
 - `web/public/capture-worklet.js`
 - `web/public/favicon.svg`
+- `web/public/realtime-worklet.js`
+- `web/scripts/e2e-realtime-server.mjs`
+- `web/scripts/realtime-gateway.mjs`
 - `web/scripts/serve.mjs`
 - `web/scripts/test-pages.mjs`
 - `web/scripts/test-railway.mjs`
+- `web/scripts/test-realtime.mjs`
 - `web/src/audio-engine.ts`
 - `web/src/audio-utils.ts`
 - `web/src/icons.ts`
 - `web/src/main.ts`
+- `web/src/realtime-client.ts`
 - `web/src/style.css`
 - `web/src/tokens.css`
 - `web/src/vite-env.d.ts`
 - `web/tests/audio-utils.spec.ts`
 - `web/tests/capture-worklet.spec.ts`
 - `web/tests/playground.spec.ts`
+- `web/tests/realtime-gateway.test.mjs`
+- `web/tests/realtime.spec.ts`
 - `web/tests/server.test.mjs`
 - `web/tsconfig.json`
 - `web/vite.config.ts`

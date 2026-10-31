@@ -45,23 +45,23 @@ test('demo needs no permission, no auto playback, can play stop and clear', asyn
   const requests: string[] = [];
   page.on('request', request => { if (request.method() !== 'GET' || !new URL(request.url()).hostname.match(/^(127\.0\.0\.1|localhost)$/)) requests.push(request.url()); });
   await page.goto('./'); await page.locator('#try-demo').click();
-  await expect(page.locator('#buffer-status')).toHaveText('5.0초 · 메모리에만');
+  await expect(page.locator('#recording-info')).toHaveText('5.0초 · 메모리에만');
   await expect(page.locator('#wave-label')).toContainText('합성 음원');
   expect(await page.evaluate(() => (window as any).__getUserMediaCalls)).toBe(0);
   expect(await page.evaluate(() => (window as any).__plays.length)).toBe(0);
   await page.locator('#play').click(); await expect(page.locator('#audio-state')).toHaveText('재생 중');
   await expect.poll(() => page.evaluate(() => (window as any).__plays.length)).toBe(1);
   expect(await page.evaluate(() => (window as any).__plays[0])).toMatchObject({ frames: 120000, rate: 24000 });
-  await page.locator('#stop').click(); await expect(page.locator('#buffer-status')).toHaveText('비어 있음');
+  await page.locator('#stop').click(); await expect(page.locator('#recording-info')).toHaveText('비어 있음');
   await expect(page.locator('#play')).toBeDisabled();
   await page.locator('#record').click(); await page.locator('#clear').click();
-  await expect(page.locator('#buffer-status')).toHaveText('비어 있음');
+  await expect(page.locator('#recording-info')).toHaveText('비어 있음');
   expect(await page.evaluate(async () => [localStorage.length, sessionStorage.length, (await indexedDB.databases()).length])).toEqual([0, 0, 0]);
   expect(requests).toEqual([]);
 });
 test('device inspection stops microphone without recording', async ({ page }) => {
   await page.goto('./'); await consentToLocalAudio(page); await page.locator('#check-microphone').click();
-  await expect(page.locator('#microphone-status')).toContainText('사용 종료');
+  await expect(page.locator('#input-state')).toContainText('사용 종료');
   expect(await page.evaluate(() => (window as any).__tracks.every((track: MediaStreamTrack) => track.readyState === 'ended'))).toBe(true);
   expect(await page.locator('#input-device option').count()).toBeGreaterThan(1);
   await expect(page.locator('#play')).toBeDisabled();
@@ -73,7 +73,7 @@ test('native worklet records 5 seconds and resamples to 24kHz without autoplay',
   await page.goto('./'); await consentToLocalAudio(page); await page.locator('#record').click();
   await expect(page.locator('#audio-state')).toHaveText('녹음 중');
   await expect(page.locator('#audio-state')).toHaveText('녹음 완료', { timeout: 12000 });
-  await expect(page.locator('#buffer-status')).toHaveText('5.0초 · 메모리에만');
+  await expect(page.locator('#recording-info')).toHaveText('5.0초 · 메모리에만');
   expect(await page.evaluate(() => (window as any).__tracks.length)).toBeGreaterThan(0);
   expect(await page.evaluate(() => (window as any).__tracks.every((t: MediaStreamTrack) => t.readyState === 'ended'))).toBe(true);
   expect(await page.evaluate(() => (window as any).__plays.length)).toBe(0);
@@ -106,7 +106,7 @@ test('settings reset remains accessible after removing privacy and checklist pag
   await page.locator('#reset-session').click();
   await expect(page.locator('#volume-value')).toHaveText('10%');
   await page.getByRole('button', { name: '설정 완료' }).click();
-  await expect(page.locator('#buffer-status')).toHaveText('비어 있음');
+  await expect(page.locator('#recording-info')).toHaveText('비어 있음');
   await expect(page.locator('#play')).toBeDisabled();
   await page.locator('[data-route="audio"]').click();
   await expect(page.locator('#page-name')).toHaveText('오디오 테스트');
@@ -138,7 +138,7 @@ test('speaker test has bounded signal and finishes', async ({ page }) => {
 test('page exit discards recording', async ({ page }) => {
   await page.goto('./'); await page.locator('#try-demo').click();
   await page.evaluate(() => dispatchEvent(new PageTransitionEvent('pagehide')));
-  await expect(page.locator('#buffer-status')).toHaveText('비어 있음');
+  await expect(page.locator('#recording-info')).toHaveText('비어 있음');
 });
 test('late permission result after cancellation is closed and ignored', async ({ page }) => {
   await page.addInitScript(() => {
@@ -153,7 +153,7 @@ test('late permission result after cancellation is closed and ignored', async ({
   await expect.poll(() => page.evaluate(() => (window as any).__tracks.length)).toBeGreaterThan(0);
   await expect.poll(() => page.evaluate(() => (window as any).__tracks.every((track: MediaStreamTrack) => track.readyState === 'ended'))).toBe(true);
   await expect(page.locator('#audio-state')).toHaveText('준비됨');
-  await expect(page.locator('#buffer-status')).toHaveText('비어 있음');
+  await expect(page.locator('#recording-info')).toHaveText('비어 있음');
 });
 test('cancel during asynchronous playback setup prevents a late sound', async ({ page }) => {
   await page.addInitScript(() => {
@@ -211,7 +211,7 @@ test('ending session revokes consent, clears voice and stops active capture', as
   await page.locator('#record').click(); await expect(page.locator('#audio-state')).toHaveText('녹음 중');
   await page.locator('#login-button').click();
   await expect(page.locator('#login-button')).toHaveText('체험 로그인');
-  await expect(page.locator('#buffer-status')).toHaveText('비어 있음');
+  await expect(page.locator('#recording-info')).toHaveText('비어 있음');
   await expect.poll(() => page.evaluate(() => (window as any).__tracks.every((track: MediaStreamTrack) => track.readyState === 'ended'))).toBe(true);
   await page.locator('#record').click(); await expect(page.locator('#consent-dialog')).toBeVisible();
   expect(errors).toEqual([]);
@@ -228,8 +228,8 @@ test('ending session during permission request closes the late stream', async ({
   await page.locator('#login-button').click();
   await expect.poll(() => page.evaluate(() => (window as any).__tracks.length)).toBeGreaterThan(0);
   await expect.poll(() => page.evaluate(() => (window as any).__tracks.every((track: MediaStreamTrack) => track.readyState === 'ended'))).toBe(true);
-  await expect(page.locator('#buffer-status')).toHaveText('비어 있음');
-  await expect(page.locator('#microphone-status')).toHaveText('확인 전');
+  await expect(page.locator('#recording-info')).toHaveText('비어 있음');
+  await expect(page.locator('#input-state')).toHaveText('확인 전');
   await expect(page.locator('#login-button')).toHaveText('체험 로그인');
 });
 test('consent popup supports mobile layout, keyboard and re-entry', async ({ page }, testInfo) => {

@@ -1,5 +1,6 @@
 import './style.css';
 import { mountIcons } from './icons';
+import { RealtimeConversation, realtimeErrors, type ConversationState } from './realtime-client';
 import { AudioEngine } from './audio-engine';
 import { demoRecording, waveform, wipe, type RecordingData } from './audio-utils';
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -12,6 +13,9 @@ let microphoneChecked = false;
 // UI acknowledgement for this tab only; never a verified guardian/auth state.
 let localAudioConsent = false;
 let volume = .1;
+let realtimeState: ConversationState = 'idle';
+let realtimeAvailable = false;
+let requiresAccessCode = false;
 let toastTimeout: ReturnType<typeof setTimeout>;
 mountIcons();
 function toast(message: string, error = false) {
@@ -21,7 +25,7 @@ function toast(message: string, error = false) {
 }
 function updateState(next = state) {
   state = next;
-  const busy = next !== 'idle';
+  const busy = next !== 'idle' || realtimeState !== 'idle';
   for (const id of ['record', 'mode-microphone', 'mode-demo', 'try-demo', 'check-microphone', 'input-device', 'test-speaker']) $<HTMLButtonElement>(id).disabled = busy;
   $<HTMLButtonElement>('check-microphone').disabled = busy || mode === 'demo';
   $<HTMLSelectElement>('input-device').disabled = busy || mode === 'demo';
@@ -30,10 +34,11 @@ function updateState(next = state) {
   $<HTMLButtonElement>('stop').disabled = !busy;
   $('audio-state').textContent = { idle: recording ? '녹음 완료' : '준비됨', requesting: '권한 확인 중', recording: '녹음 중', processing: '변환 중', playing: '재생 중' }[next];
   $('audio-state').classList.toggle('busy', busy);
-  $('buffer-status').textContent = recording ? `${(recording.pcm.length / recording.sampleRate).toFixed(1)}초 · 메모리에만` : '비어 있음';
+  updateConversationButtons();
+  $('recording-info').textContent = recording ? `${(recording.pcm.length / recording.sampleRate).toFixed(1)}초 · 메모리에만` : '비어 있음';
   $('record-label').textContent = mode === 'demo' ? '데모 녹음 만들기' : '5초 녹음하기';
-  $('microphone-status').textContent = microphoneChecked ? '권한 확인됨 · 사용 종료' : '확인 전';
-  if (next === 'recording') $('microphone-status').textContent = '녹음 중 · 마이크 사용';
+  $('input-state').textContent = microphoneChecked ? '권한 확인됨 · 사용 종료' : '확인 전';
+  if (next === 'recording') $('input-state').textContent = '녹음 중 · 마이크 사용';
 }
 function draw(levels: number[] = []) {
   const canvas = $<HTMLCanvasElement>('waveform'), ctx = canvas.getContext('2d')!;
@@ -48,6 +53,7 @@ function draw(levels: number[] = []) {
   }
 }
 function resetAudio(message?: string) {
+  conversation.stop();
   operationId++; engine.cancel(); wipe(recording); recording = null;
   $('wave-label').textContent = mode === 'demo' ? '합성 음원으로 안전하게 체험해요' : '당신의 목소리를 기다리고 있어요';
   $('recording-clock').innerHTML = '00:00 <span>/ 00:05</span>';
@@ -100,6 +106,47 @@ function fillDevices(devices: MediaDeviceInfo[]) {
     if (Array.from(select.options).some(option => option.value === previous)) select.value = previous;
   }
 }
+function updateConversationButtons() {
+  $<HTMLButtonElement>('realtime-connect').disabled = !realtimeAvailable || realtimeState !== 'idle' || state !== 'idle';
+  $<HTMLButtonElement>('realtime-end').disabled = realtimeState === 'idle';
+  for (const id of ['realtime-mute','realtime-interrupt']) $<HTMLButtonElement>(id).disabled = realtimeState === 'idle' || realtimeState === 'connecting';
+}
+const conversation = new RealtimeConversation({
+  state(value) {
+    realtimeState = value;
+    const labels = { idle:'대화 준비', connecting:'연결 중', listening:'듣고 있어요', thinking:'답변 준비 중', speaking:'모모가 말하고 있어요' };
+    $('realtime-status').textContent = labels[value];
+    $('realtime-message').textContent = value === 'idle' ? '대화 시작을 누르면 마이크를 연결해요.' : value === 'connecting' ? '마이크와 AI를 연결하고 있어요…' : value === 'listening' ? '편하게 말해 주세요. 말이 끝나면 모모가 대답해요.' : value === 'thinking' ? '잠깐만요, 대답을 준비하고 있어요.' : '모모의 대답을 듣고 있어요.';
+    $('conversation-orb').classList.toggle('active',value === 'speaking' || value === 'listening');
+    if(value === 'idle') { $('realtime-mute').textContent='마이크 끄기'; $('realtime-mute').setAttribute('aria-pressed','false'); }
+    updateState();
+  },
+  error(code) { const message=realtimeErrors[code] || realtimeErrors.UPSTREAM_UNAVAILABLE; $('realtime-message').textContent=message; $('realtime-status').textContent='연결 확인 필요'; toast(message,true); },
+  level(peak) { $('conversation-orb').style.setProperty('--voice-scale',String(1+Math.min(.2,peak*.3))); },
+});
+$('realtime-connect').addEventListener('click', () => {
+  if(!requireAudioConsent()) return;
+  if(!$<HTMLInputElement>('realtime-consent').checked) { $<HTMLInputElement>('realtime-consent').focus(); toast('실시간 음성 전송 안내에 동의해 주세요.'); return; }
+  const code=$<HTMLInputElement>('realtime-access-code').value;
+  if(requiresAccessCode && !code) { $<HTMLInputElement>('realtime-access-code').focus(); toast('테스트 접근 코드를 입력해 주세요.'); return; }
+  resetAudio();
+  void conversation.start($<HTMLSelectElement>('input-device').value,$<HTMLSelectElement>('output-device').value,volume,code);
+  $<HTMLInputElement>('realtime-access-code').value='';
+});
+$('realtime-end').addEventListener('click', () => conversation.stop());
+$('realtime-interrupt').addEventListener('click', () => conversation.interrupt());
+$('realtime-mute').addEventListener('click', () => {
+  const muted=conversation.toggleMute(); $('realtime-mute').textContent=muted?'마이크 켜기':'마이크 끄기'; $('realtime-mute').setAttribute('aria-pressed',String(muted));
+});
+$<HTMLInputElement>('realtime-consent').addEventListener('change', event => {
+  if(!(event.target as HTMLInputElement).checked) conversation.stop();
+});
+void conversation.config().then(config => {
+  realtimeAvailable=config.available; requiresAccessCode=config.requiresAccessCode;
+  $('realtime-access-field').hidden=!requiresAccessCode;
+  $('realtime-message').textContent=config.available ? '별도 전송 동의 후 대화 시작을 눌러 주세요.' : 'Railway에 OPENAI_API_KEY를 설정하면 대화할 수 있어요.';
+  $('realtime-status').textContent=config.available?'연결 준비':'키 설정 필요'; updateConversationButtons();
+}).catch(() => { $('realtime-message').textContent='실시간 대화는 Railway 서버에서 사용할 수 있어요. 로컬 오디오 테스트는 아래에서 이용하세요.'; });
 const consentDialog = $<HTMLDialogElement>('consent-dialog');
 const consentCheckbox = $<HTMLInputElement>('consent-checkbox');
 const consentAccept = $<HTMLButtonElement>('consent-accept');
@@ -114,6 +161,8 @@ function openConsent() {
 }
 function endSession(message?: string) {
   localAudioConsent = false;
+  $<HTMLInputElement>('realtime-consent').checked = false;
+  $<HTMLInputElement>('realtime-access-code').value = '';
   consentCheckbox.checked = false; consentAccept.disabled = true;
   selectMode('microphone');
   microphoneChecked = false; fillDevices([]);
@@ -206,6 +255,7 @@ $('open-help').addEventListener('click', () => $<HTMLDialogElement>('help-dialog
 $<HTMLInputElement>('volume').addEventListener('input', event => {
   const value = Number((event.target as HTMLInputElement).value); volume = Math.max(.01, Math.min(.2, value / 100));
   $('volume-value').textContent = `${Math.round(volume * 100)}%`;
+  conversation.setVolume(volume);
 });
 $<HTMLSelectElement>('output-device').disabled = !engine.canSelectOutput;
 if (!engine.canSelectOutput) $('output-note').textContent = '이 브라우저에서는 시스템 기본 스피커를 사용해요. 기기의 오디오 설정에서 바꿔 주세요.';
@@ -226,5 +276,5 @@ window.addEventListener('pagehide', () => {
   endSession();
 });
 document.addEventListener('visibilitychange', () => { if (document.hidden) resetAudio('탭이 비활성화되어 임시 음성을 정리했어요.'); });
-window.addEventListener('keydown', event => { if (event.key === 'Escape' && state !== 'idle') resetAudio('작업을 중단했어요.'); });
+window.addEventListener('keydown', event => { if (event.key === 'Escape' && (state !== 'idle' || realtimeState !== 'idle')) resetAudio('작업을 중단했어요.'); });
 route(); draw(); updateState(); updateConsentButton();

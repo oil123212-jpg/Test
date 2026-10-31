@@ -1,4 +1,5 @@
 import { createServer } from 'node:http';
+import { attachRealtime } from './realtime-gateway.mjs';
 import { createReadStream } from 'node:fs';
 import { realpath, stat } from 'node:fs/promises';
 import { resolve, extname, sep } from 'node:path';
@@ -13,14 +14,16 @@ const securityHeaders = {
 };
 const mime = { '.html':'text/html; charset=utf-8', '.js':'text/javascript; charset=utf-8', '.css':'text/css; charset=utf-8', '.svg':'image/svg+xml', '.json':'application/json; charset=utf-8', '.png':'image/png', '.ico':'image/x-icon', '.woff2':'font/woff2' };
 
-export function createAppServer(root = defaultRoot) {
+export function createAppServer(root = defaultRoot, realtimeOptions = {}) {
   const absoluteRoot = resolve(root);
-  return createServer(async (req, res) => {
+  let realtime;
+  const server = createServer(async (req, res) => {
     for (const [name, value] of Object.entries(securityHeaders)) res.setHeader(name, value);
     const reply = (status, message) => {
       res.writeHead(status, { 'Content-Type':'text/plain; charset=utf-8', 'Cache-Control':'no-store' });
       res.end(req.method === 'HEAD' ? undefined : message);
     };
+    if (await realtime.handle(req, res)) return;
     if (req.method !== 'GET' && req.method !== 'HEAD') {
       res.setHeader('Allow', 'GET, HEAD'); reply(405, 'Method not allowed'); return;
     }
@@ -55,6 +58,8 @@ export function createAppServer(root = defaultRoot) {
       else reply(404, 'Not found');
     }
   });
+  realtime = attachRealtime(server, realtimeOptions);
+  return server;
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {

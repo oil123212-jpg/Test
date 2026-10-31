@@ -12,7 +12,7 @@ Railway 서비스의 Source를 다음과 같이 지정합니다.
 - Builder: Dockerfile (루트 `Dockerfile` 및 `railway.json` 포함)
 - Healthcheck: `/health` (설정 파일에 포함)
 
-Dockerfile이 웹 의존성을 설치하고 빌드합니다. 실행 단계에는 Node와 정적 빌드만 포함하며 `0.0.0.0:$PORT`로 요청을 받습니다. 별도의 Build/Start Command override는 제거하고 Dockerfile의 CMD를 사용하세요. Python/PortAudio 및 API 키는 필요하지 않습니다.
+Dockerfile이 웹 의존성을 설치하고 빌드합니다. 실행 단계에는 Node와 정적 빌드만 포함하며 `0.0.0.0:$PORT`로 요청을 받습니다. 별도의 Build/Start Command override는 제거하고 Dockerfile의 CMD를 사용하세요. Python/PortAudio는 필요하지 않습니다. 실시간 대화에는 서비스 변수 OPENAI_API_KEY를 사용합니다. [Realtime 설정](realtime_setup.md)을 참고하세요.
 
 기존 Railway 서비스가 이 저장소의 `main`을 연결했다면 새 커밋 배포를 확인하거나 Deployments에서 Redeploy를 실행합니다. 다른 브랜치가 연결되어 있으면 Source의 Branch를 `main`으로 변경합니다.
 
@@ -31,7 +31,7 @@ Railway CLI를 사용한다면 자신의 계정에서 `railway login`, `railway 
 - `npm run test:server`: healthcheck, 보안 헤더, MIME, HEAD, 업로드 차단, 숨김 파일/경로/심볼릭 링크 보호 검증
 - `npm run test:railway`: 배포용 Node 서버를 대상으로 기존 브라우저 기능 전체 검증
 
-이 설정은 배포 플랫폼을 Railway에 맞춘 것입니다. Railway의 계정 요금/크레딧 정책을 무료라고 보장하지 않습니다. 실제 AI 호출은 여전히 구현하지 않았습니다.
+이 설정은 배포 플랫폼을 Railway에 맞춘 것입니다. Railway의 계정 요금/크레딧 정책을 무료라고 보장하지 않습니다. 실시간 대화는 OpenAI API 사용량에 따라 별도 비용이 발생합니다.
 
 ## 현재 검증 결과
 
@@ -44,3 +44,7 @@ Railway 빌드 로그에서 `--mount=type=secret,id=build_ca`가 지원되지 �
 ## main 반영 확인
 
 기본 브랜치 main에 웹사이트, Dockerfile, railway.json, Node 실행 서버를 통합했습니다. 예전 main에는 배포 설정이 없어 기본 브랜치를 연결한 서비스에서 최신 웹사이트가 실행되지 않을 수 있었습니다. 기존 버전 태그와 release 브랜치는 삭제하거나 재지정하지 않았습니다.
+
+## v0.3 실시간 대화
+
+[Realtime 설정](realtime_setup.md)이 최신 연결 안내입니다. Docker runtime에 ws 의존성과 gateway 스크립트를 포함합니다. 아래의 과거 테스트 53개 기록과 별도로 최신 서버 24개/브라우저 62개 검증을 완료했습니다. 실제 OpenAI 연결 결과는 서비스 재배포 후 확인해야 합니다.
