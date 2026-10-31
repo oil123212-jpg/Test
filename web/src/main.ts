@@ -9,6 +9,8 @@ let mode: 'microphone' | 'demo' = 'microphone';
 let state: 'idle' | 'requesting' | 'recording' | 'processing' | 'playing' = 'idle';
 let operationId = 0;
 let microphoneChecked = false;
+// UI acknowledgement for this tab only; never a verified guardian/auth state.
+let localAudioConsent = false;
 let volume = .1;
 let toastTimeout: ReturnType<typeof setTimeout>;
 mountIcons();
@@ -98,6 +100,52 @@ function fillDevices(devices: MediaDeviceInfo[]) {
     if (Array.from(select.options).some(option => option.value === previous)) select.value = previous;
   }
 }
+const consentDialog = $<HTMLDialogElement>('consent-dialog');
+const consentCheckbox = $<HTMLInputElement>('consent-checkbox');
+const consentAccept = $<HTMLButtonElement>('consent-accept');
+function updateConsentButton() {
+  $('login-button').textContent = localAudioConsent ? '이용 종료' : '체험 로그인';
+  $('login-button').setAttribute('aria-haspopup', localAudioConsent ? 'false' : 'dialog');
+}
+function openConsent() {
+  consentCheckbox.checked = false;
+  consentAccept.disabled = true;
+  if (!consentDialog.open) consentDialog.showModal();
+}
+function endSession(message?: string) {
+  localAudioConsent = false;
+  consentCheckbox.checked = false; consentAccept.disabled = true;
+  selectMode('microphone');
+  microphoneChecked = false; fillDevices([]);
+  volume = .1; $<HTMLInputElement>('volume').value = '10'; $('volume-value').textContent = '10%';
+  updateConsentButton(); updateState();
+  if (message) toast(message);
+}
+function requireAudioConsent() {
+  if (localAudioConsent) return true;
+  openConsent();
+  return false;
+}
+$('login-button').addEventListener('click', () => {
+  if (localAudioConsent) endSession('이용을 종료하고 동의와 임시 음성을 정리했어요.');
+  else openConsent();
+});
+consentCheckbox.addEventListener('change', () => { consentAccept.disabled = !consentCheckbox.checked; });
+$('consent-form').addEventListener('submit', event => {
+  event.preventDefault();
+  if (!consentCheckbox.checked) { consentCheckbox.focus(); return; }
+  localAudioConsent = true;
+  updateConsentButton(); consentDialog.close('accepted');
+  toast('이 탭의 오디오 체험 동의를 확인했어요. 마이크 테스트를 직접 눌러 시작하세요.');
+});
+function declineConsent() {
+  consentDialog.close('declined');
+  endSession('동의하지 않았어요. 마이크 없이 데모 음원을 이용할 수 있어요.');
+}
+$('consent-decline').addEventListener('click', declineConsent);
+$('consent-close').addEventListener('click', declineConsent);
+consentDialog.addEventListener('cancel', event => { event.preventDefault(); declineConsent(); });
+consentDialog.addEventListener('close', () => { consentCheckbox.checked = false; consentAccept.disabled = true; });
 $('mode-microphone').addEventListener('click', () => selectMode('microphone'));
 $('mode-demo').addEventListener('click', () => selectMode('demo'));
 $('try-demo').addEventListener('click', () => {
@@ -107,6 +155,7 @@ $('try-demo').addEventListener('click', () => {
 });
 $('record').addEventListener('click', () => {
   if (mode === 'demo') { wipe(recording); recording = demoRecording(); showRecording(); return; }
+  if (!requireAudioConsent()) return;
   wipe(recording); recording = null; draw();
   void run('requesting', async id => {
     const levels: number[] = [];
@@ -123,11 +172,14 @@ $('record').addEventListener('click', () => {
     recording = result; showRecording(); toast('녹음이 끝나 마이크를 닫았어요. 직접 다시 듣기를 눌러 주세요.');
   });
 });
-$('check-microphone').addEventListener('click', () => void run('requesting', async id => {
-  const devices = await engine.inspectInput($<HTMLSelectElement>('input-device').value);
-  if (id !== operationId) return;
-  microphoneChecked = true; fillDevices(devices); toast('마이크 권한과 장치를 확인했어요. 녹음은 시작하지 않았어요.');
-}));
+$('check-microphone').addEventListener('click', () => {
+  if (!requireAudioConsent()) return;
+  void run('requesting', async id => {
+    const devices = await engine.inspectInput($<HTMLSelectElement>('input-device').value);
+    if (id !== operationId) return;
+    microphoneChecked = true; fillDevices(devices); toast('마이크 권한과 장치를 확인했어요. 녹음은 시작하지 않았어요.');
+  });
+});
 $('play').addEventListener('click', () => {
   if (!recording) return;
   const current = recording;
@@ -147,9 +199,7 @@ $('reset-session').addEventListener('click', () => {
   selectMode('microphone');
   microphoneChecked = false; fillDevices([]);
   volume = .1; $<HTMLInputElement>('volume').value = '10'; $('volume-value').textContent = '10%';
-  updateState(); toast('세션의 음성과 체크 상태를 모두 지웠어요.');
-  document.querySelectorAll<HTMLInputElement>('.checklist input').forEach(input => { input.checked = false; });
-  $('checklist-count').textContent = '0 / 5 확인';
+  updateState(); toast('임시 음성과 오디오 설정을 초기화했어요.');
 });
 $('open-settings').addEventListener('click', () => $<HTMLDialogElement>('settings-dialog').showModal());
 $('open-help').addEventListener('click', () => $<HTMLDialogElement>('help-dialog').showModal());
@@ -159,23 +209,22 @@ $<HTMLInputElement>('volume').addEventListener('input', event => {
 });
 $<HTMLSelectElement>('output-device').disabled = !engine.canSelectOutput;
 if (!engine.canSelectOutput) $('output-note').textContent = '이 브라우저에서는 시스템 기본 스피커를 사용해요. 기기의 오디오 설정에서 바꿔 주세요.';
-document.querySelectorAll('.checklist input').forEach(input => input.addEventListener('change', () => {
-  $('checklist-count').textContent = `${document.querySelectorAll('.checklist input:checked').length} / 5 확인`;
-}));
 function route() {
   const name = location.hash.slice(1) || 'overview';
-  const known = ['overview', 'audio', 'privacy', 'checklist'].includes(name) ? name : 'overview';
-  if ((known === 'privacy' || known === 'checklist') && state !== 'idle') resetAudio('진행 중인 오디오 작업을 중단했어요.');
-  for (const view of ['overview', 'privacy', 'checklist']) $(`${view}-view`).hidden = view !== (known === 'audio' ? 'overview' : known);
+  const known = name === 'audio' ? 'audio' : 'overview';
+  if (name !== known) history.replaceState(null, '', `${location.pathname}${location.search}#overview`);
   document.querySelectorAll<HTMLElement>('[data-route]').forEach(link => {
     const active = link.dataset.route === known; link.classList.toggle('active', active);
     if (active) link.setAttribute('aria-current', 'page'); else link.removeAttribute('aria-current');
   });
-  $('page-name').textContent = { overview: '대시보드', audio: '오디오 테스트', privacy: '개인정보 보호', checklist: '준비 체크리스트' }[known]!;
+  $('page-name').textContent = known === 'audio' ? '오디오 테스트' : '대시보드';
   if (known === 'audio') $('audio-lab').scrollIntoView({ block: 'center' }); else window.scrollTo(0, 0);
 }
 window.addEventListener('hashchange', route);
-window.addEventListener('pagehide', () => resetAudio());
+window.addEventListener('pagehide', () => {
+  if (consentDialog.open) consentDialog.close();
+  endSession();
+});
 document.addEventListener('visibilitychange', () => { if (document.hidden) resetAudio('탭이 비활성화되어 임시 음성을 정리했어요.'); });
 window.addEventListener('keydown', event => { if (event.key === 'Escape' && state !== 'idle') resetAudio('작업을 중단했어요.'); });
-route(); draw(); updateState();
+route(); draw(); updateState(); updateConsentButton();

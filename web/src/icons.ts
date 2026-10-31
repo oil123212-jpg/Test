@@ -3,7 +3,6 @@ const paths: Record<string, string> = {
   grid:'<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
   wave:'<path d="M3 10v4M7 6v12M12 3v18M17 7v10M21 10v4"/>',
   shield:'<path d="m12 3 8 3v6c0 5-8 9-8 9S4 17 4 12V6z"/><path d="m9 12 2 2 4-4"/>',
-  checklist:'<rect x="5" y="4" width="15" height="17" rx="2"/><path d="M9 2v4M15 2v4M9 11l1 1 2-2M15 11h2M9 16l1 1 2-2M15 16h2"/>',
   leaf:'<path d="M20 3C8 3 3 8 5 15c6 6 16 1 15-12Z"/><path d="M4 21 15 10"/>',
   help:'<circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 0 1 5 .5c0 1.5-2.5 2-2.5 3.5M12 17h.01"/>',
   'arrow-up-right':'<path d="M7 17 17 7M7 7h10v10"/>',
