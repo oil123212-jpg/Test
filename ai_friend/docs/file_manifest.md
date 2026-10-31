@@ -1,10 +1,13 @@
 # 프로젝트 파일 목록
 
-2026-10-31 웹 전환 후 소스·설정·문서 67개 파일입니다. 가상환경, node_modules, 정적 빌드 결과, 테스트 산출물, 배포 ZIP은 제외합니다. 기존 Python 코드는 보존했습니다.
+2026-10-31 기준 소스·설정·문서 80개 파일입니다. 현재 배포 대상은 Railway이며, 가상환경·node_modules·빌드·테스트 산출물·다운로드 ZIP은 제외합니다.
 
+- `.dockerignore`
+- `.github/workflows/pages.yml`
 - `.github/workflows/tests.yml`
 - `.github/workflows/web.yml`
 - `.gitignore`
+- `Dockerfile`
 - `README.md`
 - `ai_friend/.env.example`
 - `ai_friend/.gitignore`
@@ -43,8 +46,13 @@
 - `ai_friend/tests/test_hardware.py`
 - `ai_friend/tests/test_main.py`
 - `ai_friend/tests/test_privacy.py`
+- `docs/free_hosting.md`
+- `docs/railway_deployment.md`
+- `docs/releases/v0.2.0.md`
 - `docs/web_transition.md`
+- `railway.json`
 - `scripts/activate_cloud.sh`
+- `scripts/publish_pages.py`
 - `scripts/setup_cloud.sh`
 - `scripts/setup_python.sh`
 - `web/.gitignore`
@@ -54,9 +62,13 @@
 - `web/package-lock.json`
 - `web/package.json`
 - `web/playwright.config.ts`
+- `web/public/.nojekyll`
 - `web/public/_headers`
 - `web/public/capture-worklet.js`
 - `web/public/favicon.svg`
+- `web/scripts/serve.mjs`
+- `web/scripts/test-pages.mjs`
+- `web/scripts/test-railway.mjs`
 - `web/src/audio-engine.ts`
 - `web/src/audio-utils.ts`
 - `web/src/icons.ts`
@@ -67,5 +79,6 @@
 - `web/tests/audio-utils.spec.ts`
 - `web/tests/capture-worklet.spec.ts`
 - `web/tests/playground.spec.ts`
+- `web/tests/server.test.mjs`
 - `web/tsconfig.json`
 - `web/vite.config.ts`

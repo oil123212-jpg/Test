@@ -25,7 +25,7 @@ test.beforeEach(async ({ page }) => {
 });
 test('dashboard is responsive and requests no microphone on load', async ({ page }, testInfo) => {
   const errors: string[] = []; page.on('pageerror', e => errors.push(e.message));
-  await page.goto('/');
+  await page.goto('./');
   await expect(page.getByRole('heading', { name: '반가워요, 모모예요' })).toBeVisible();
   await expect(page.locator('#play')).toBeDisabled();
   expect(await page.evaluate(() => (window as any).__getUserMediaCalls)).toBe(0);
@@ -36,7 +36,7 @@ test('dashboard is responsive and requests no microphone on load', async ({ page
 test('demo needs no permission, no auto playback, can play stop and clear', async ({ page }) => {
   const requests: string[] = [];
   page.on('request', request => { if (request.method() !== 'GET' || !new URL(request.url()).hostname.match(/^(127\.0\.0\.1|localhost)$/)) requests.push(request.url()); });
-  await page.goto('/'); await page.locator('#try-demo').click();
+  await page.goto('./'); await page.locator('#try-demo').click();
   await expect(page.locator('#buffer-status')).toHaveText('5.0초 · 메모리에만');
   await expect(page.locator('#wave-label')).toContainText('합성 음원');
   expect(await page.evaluate(() => (window as any).__getUserMediaCalls)).toBe(0);
@@ -52,7 +52,7 @@ test('demo needs no permission, no auto playback, can play stop and clear', asyn
   expect(requests).toEqual([]);
 });
 test('device inspection stops microphone without recording', async ({ page }) => {
-  await page.goto('/'); await page.locator('#check-microphone').click();
+  await page.goto('./'); await page.locator('#check-microphone').click();
   await expect(page.locator('#microphone-status')).toContainText('사용 종료');
   expect(await page.evaluate(() => (window as any).__tracks.every((track: MediaStreamTrack) => track.readyState === 'ended'))).toBe(true);
   expect(await page.locator('#input-device option').count()).toBeGreaterThan(1);
@@ -62,7 +62,7 @@ test('device inspection stops microphone without recording', async ({ page }) =>
 test('native worklet records 5 seconds and resamples to 24kHz without autoplay', async ({ page }) => {
   const uploads: string[] = [];
   page.on('request', request => { if (request.method() !== 'GET' || new URL(request.url()).hostname !== '127.0.0.1') uploads.push(request.url()); });
-  await page.goto('/'); await page.locator('#record').click();
+  await page.goto('./'); await page.locator('#record').click();
   await expect(page.locator('#audio-state')).toHaveText('녹음 중');
   await expect(page.locator('#audio-state')).toHaveText('녹음 완료', { timeout: 12000 });
   await expect(page.locator('#buffer-status')).toHaveText('5.0초 · 메모리에만');
@@ -76,7 +76,7 @@ test('native worklet records 5 seconds and resamples to 24kHz without autoplay',
   await page.locator('#stop').click();
 });
 test('recording can be cancelled and restarted with no active tracks', async ({ page }) => {
-  await page.goto('/'); await page.locator('#record').click();
+  await page.goto('./'); await page.locator('#record').click();
   await expect(page.locator('#audio-state')).toHaveText('녹음 중'); await page.locator('#stop').click();
   await expect(page.locator('#audio-state')).toHaveText('준비됨');
   expect(await page.evaluate(() => (window as any).__tracks.every((t: MediaStreamTrack) => t.readyState === 'ended'))).toBe(true);
@@ -85,13 +85,13 @@ test('recording can be cancelled and restarted with no active tracks', async ({ 
 });
 test('permission denial is explained and demo still works', async ({ page }) => {
   await page.addInitScript(() => { navigator.mediaDevices.getUserMedia = async () => { throw new DOMException('Private details', 'NotAllowedError'); }; });
-  await page.goto('/'); await page.locator('#record').click();
+  await page.goto('./'); await page.locator('#record').click();
   await expect(page.locator('#toast')).toContainText('마이크 접근이 허용되지');
   await expect(page.locator('#toast')).not.toContainText('Private details');
   await page.locator('#try-demo').click(); await expect(page.locator('#play')).toBeEnabled();
 });
 test('settings, navigation and checklist reset work', async ({ page }) => {
-  await page.goto('/'); await page.locator('#open-settings').click();
+  await page.goto('./'); await page.locator('#open-settings').click();
   await expect(page.locator('#settings-dialog')).toBeVisible();
   await page.locator('#volume').fill('20'); await expect(page.locator('#volume-value')).toHaveText('20%');
   await page.getByRole('button', { name: '설정 완료' }).click();
@@ -107,13 +107,13 @@ test('settings, navigation and checklist reset work', async ({ page }) => {
   await expect(page.locator('#play')).toBeDisabled();
 });
 test('speaker test has bounded signal and finishes', async ({ page }) => {
-  await page.goto('/'); await page.locator('#test-speaker').click();
+  await page.goto('./'); await page.locator('#test-speaker').click();
   await expect.poll(() => page.evaluate(() => (window as any).__plays.length)).toBe(1);
   expect(await page.evaluate(() => (window as any).__plays[0].peak)).toBeLessThanOrEqual(.1);
   await expect(page.locator('#audio-state')).toHaveText('준비됨');
 });
 test('page exit discards recording', async ({ page }) => {
-  await page.goto('/'); await page.locator('#try-demo').click();
+  await page.goto('./'); await page.locator('#try-demo').click();
   await page.evaluate(() => dispatchEvent(new PageTransitionEvent('pagehide')));
   await expect(page.locator('#buffer-status')).toHaveText('비어 있음');
 });
@@ -124,7 +124,7 @@ test('late permission result after cancellation is closed and ignored', async ({
       await new Promise(resolve => setTimeout(resolve, 450)); return get(constraints);
     };
   });
-  await page.goto('/'); await page.locator('#record').click();
+  await page.goto('./'); await page.locator('#record').click();
   await expect(page.locator('#audio-state')).toHaveText('권한 확인 중');
   await page.locator('#stop').click();
   await expect.poll(() => page.evaluate(() => (window as any).__tracks.length)).toBeGreaterThan(0);
@@ -137,7 +137,7 @@ test('cancel during asynchronous playback setup prevents a late sound', async ({
     const resume = AudioContext.prototype.resume;
     AudioContext.prototype.resume = async function() { await new Promise(resolve => setTimeout(resolve, 400)); return resume.call(this); };
   });
-  await page.goto('/'); await page.locator('#try-demo').click();
+  await page.goto('./'); await page.locator('#try-demo').click();
   await page.locator('#play').click(); await page.locator('#stop').click();
   await page.waitForTimeout(600);
   expect(await page.evaluate(() => (window as any).__plays.length)).toBe(0);
