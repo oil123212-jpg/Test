@@ -9,7 +9,7 @@ export const realtimeErrors: Record<string, string> = {
   MODEL_UNAVAILABLE:'Railway의 OPENAI_REALTIME_MODEL에 사용 가능한 모델을 설정해 주세요.',
   SESSION_LIMIT:'동시 대화 또는 시간당 이용 한도에 도달했어요. 잠시 후 다시 시도해 주세요.',
   SESSION_EXPIRED:'대화 시간이 끝났어요. 다시 시작할 수 있어요.',
-  ACCESS_DENIED:'테스트 접근 코드가 맞지 않아요.',
+  ACCESS_DENIED:'이용 코드가 맞지 않아요.',
   CONSENT_REQUIRED:'실시간 음성 전송 안내에 먼저 동의해 주세요.',
   CONNECT_TIMEOUT:'AI 연결 시간이 초과됐어요. 네트워크와 모델 설정을 확인해 주세요.',
   API_REQUEST_FAILED:'Realtime 세션 설정이 거부됐어요. 서버의 모델과 음성 설정을 확인해 주세요.',

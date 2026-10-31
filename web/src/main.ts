@@ -128,7 +128,7 @@ $('realtime-connect').addEventListener('click', () => {
   if(!requireAudioConsent()) return;
   if(!$<HTMLInputElement>('realtime-consent').checked) { $<HTMLInputElement>('realtime-consent').focus(); toast('실시간 음성 전송 안내에 동의해 주세요.'); return; }
   const code=$<HTMLInputElement>('realtime-access-code').value;
-  if(requiresAccessCode && !code) { $<HTMLInputElement>('realtime-access-code').focus(); toast('테스트 접근 코드를 입력해 주세요.'); return; }
+  if(requiresAccessCode && !code) { $<HTMLInputElement>('realtime-access-code').focus(); toast('이용 코드를 입력해 주세요.'); return; }
   resetAudio();
   void conversation.start($<HTMLSelectElement>('input-device').value,$<HTMLSelectElement>('output-device').value,volume,code);
   $<HTMLInputElement>('realtime-access-code').value='';
