@@ -16,4 +16,4 @@ npm run dev
 - [웹 전환 설계 및 Phase 1 준비 계획](docs/web_transition.md)
 - [기존 Python 기반](ai_friend/README.md): 유지되지만 웹 실행에는 Python/PortAudio/Pi가 필요하지 않습니다.
 
-`web/dist/`는 정적 배포 결과입니다. 현재 공개 URL에 배포하지는 않았습니다.
+`v0.1.0`은 기존 기준 버전, `release/web-v0.2.0` 및 `v0.2.0`은 GitHub Pages 배포를 지원하는 별도 버전입니다. `gh-pages`는 정적 배포 파일용입니다. 사이트 활성화 방법과 검증 범위는 [v0.2.0 안내](docs/releases/v0.2.0.md)를 참고하세요.

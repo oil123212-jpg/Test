@@ -70,10 +70,22 @@ npm run build
 npm run preview
 ```
 
-로컬 프로덕션 확인 기본 포트는 4173입니다. 배포 대상은 `dist/` 안의 파일입니다. Node 서버가 필요한 앱이 아니며 HTTPS 정적 호스팅으로 배포할 수 있습니다. 배포 루트에 `index.html`, `assets/`, `capture-worklet.js`, `favicon.svg`를 배치하세요. 현재 경로는 사이트 루트 배포를 가정합니다. 하위 경로에 배포하려면 Vite base와 worklet 경로를 함께 조정해야 합니다.
+로컬 프로덕션 확인 기본 포트는 4173입니다. 배포 대상은 `dist/` 안의 파일입니다. Node 서버가 필요한 앱이 아니며 HTTPS 정적 호스팅으로 배포할 수 있습니다. 배포 루트에 `index.html`, `assets/`, `capture-worklet.js`, `favicon.svg`를 배치하세요. 일반 빌드는 사이트 루트를 사용합니다. `npm run build:pages`는 GitHub Pages의 `/Test/` 경로에 맞게 빌드합니다. 아이콘과 마이크 worklet도 해당 경로를 사용합니다. `npm run test:pages`로 같은 경로에서 전체 브라우저 테스트를 실행할 수 있습니다.
 
 권장 검토안은 Netlify 또는 Cloudflare Pages의 정적 호스팅입니다. 저장소 연결 시 root directory는 `web`, build command는 `npm run build`, output directory는 `dist`, Node 버전은 24로 설정합니다. 수동 업로드라면 빌드 결과 전체를 사용하세요. 이 작업에서 외부 호스팅 계정 생성/배포는 수행하지 않았습니다.
 
 `_headers`는 Netlify/Cloudflare Pages 등 지원 호스팅에서 적용합니다. 다른 호스팅은 `vite.config.ts`에 정의한 프로덕션 보안 헤더를 호스팅 설정으로 별도 적용하세요. Vite preview의 헤더가 외부 호스팅에 자동으로 적용되는 것은 아닙니다. HTTPS, microphone 권한, 실제 오디오, MIME 타입, worklet 경로를 배포 후 다시 확인해야 합니다.
 
 향후 실제 AI는 [웹 전환 설계](../docs/web_transition.md)의 서버 인증/중계 구조로 연결합니다. 브라우저에 장기 제공자 API 키를 입력하는 UI나 환경변수는 추가하지 않습니다.
+
+## GitHub의 별도 버전과 Pages
+
+- 기존 기준 버전: `v0.1.0` 태그
+- 새 웹 버전: `release/web-v0.2.0` 브랜치 및 `v0.2.0` 태그
+- 정적 배포 파일: `gh-pages` 브랜치
+
+소스 커밋을 완료하고 `npm run test:pages`를 실행한 뒤 저장소 루트에서 `python3 scripts/publish_pages.py`를 실행하면 정적 빌드를 gh-pages로 업로드합니다. 원본 소스 브랜치나 기본 Git index를 변경하지 않으며 force push하지 않습니다. 게시되는 `version.json`에는 버전과 소스 커밋이 포함됩니다.
+
+최초 사이트 활성화는 GitHub **Settings → Pages → Build and deployment → Source: Deploy from a branch → Branch: gh-pages, /(root) → Save**로 설정합니다. 저장소 공개/비공개 상태와 요금제에 따라 Pages 사용 가능 여부도 확인해야 합니다. 설정/실행 완료 전에는 사이트가 실제 서비스 중이라고 간주하지 않습니다.
+
+대안으로 Source를 GitHub Actions로 설정하면 **Deploy Momo to GitHub Pages** 워크플로를 수동 실행할 수 있습니다. 기본 입력은 `v0.2.0`이며 배포할 태그/브랜치를 지정할 수 있습니다. 두 방식을 동시에 사용할 필요는 없습니다. GitHub Pages는 `_headers`를 보안 헤더 설정으로 해석하지 않으므로, 다른 호스팅의 헤더가 자동 적용된다고 가정하지 않습니다. 현재 정적 앱은 API 키와 외부 음성 업로드 기능이 없습니다.

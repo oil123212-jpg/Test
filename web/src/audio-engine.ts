@@ -56,7 +56,7 @@ export class AudioEngine {
       }});
       if (controller.signal.aborted) throw aborted();
       if (!context.audioWorklet) throw new Error('WebAudioRequired');
-      await context.audioWorklet.addModule('/capture-worklet.js');
+      await context.audioWorklet.addModule(new URL('capture-worklet.js', document.baseURI).href);
       if (controller.signal.aborted) throw aborted();
       source = context.createMediaStreamSource(stream);
       node = new AudioWorkletNode(context, 'momo-capture', { processorOptions: { frames: Math.round(context.sampleRate * 5) } });
