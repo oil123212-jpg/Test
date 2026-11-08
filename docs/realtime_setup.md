@@ -15,12 +15,12 @@
 
 배포 후 체험 로그인에서 안내에 동의하고, 실시간 대화 영역의 **별도 음성 전송 동의**를 체크한 뒤 대화 시작을 누르세요. 마이크를 허용하면 말이 끝났을 때 서버 VAD가 발화를 확정하고 Railway가 응답을 요청합니다. 마이크 끄기/켜기, 응답 중단, 대화 종료를 제공합니다. 이용 종료·외부 전송 동의 철회·탭 비활성화 때 연결과 마이크를 정리합니다. 부모님용 [라이프 가이드](life_guide.md)에서 생활 시간을 선택하면 해당 시간대의 대화에 가끔 생활 화두를 연결합니다.
 
-현재는 성인 개발자용 시험입니다. 기존 체험 체크박스가 법정대리인 확인이나 실제 아동 데이터 외부 전송 승인을 의미하지 않습니다. 아동 음성 적용은 제공자/개인정보 요건 검토와 검증된 동의 흐름을 별도로 완료한 뒤 진행해야 합니다. 서버의 프롬프트도 성인 연결 시험으로 설정했습니다.
+기본 답변은 [모모 프롬프트](momo_prompt.md)의 3~6세 수준으로 구성합니다. 개별 연령 설정이 없으므로 3~4세도 이해할 수 있는 말로 시작합니다. 현재 체험 로그인과 음성 전송 체크박스는 계정 인증이나 보호자 본인·법정대리인 확인 기능이 아닙니다. 음성 전송 문구는 “대화 중 음성이 OpenAI로 실시간 전송되는 것에 동의합니다.”이며, 서버 중계 구조와 데이터 처리 방식은 그대로입니다.
 
 ## 구현
 
 1. GET /api/realtime/config: 키 값 없이 설정 여부, 모델, 접근 코드 필요 여부, 시간 제한만 반환.
-2. POST /api/realtime/session: 동일 Origin + JSON + 현재 정책 버전 + 명시적 외부 전송/성인 시험 확인을 검증. 선택적 접근 코드 확인 후 짧은 일회용 권한 발급.
+2. POST /api/realtime/session: 동일 Origin + JSON + 현재 정책 버전 + 명시적 외부 음성 전송 동의를 검증. 정책 버전은 realtime-voice-v2이며 화면에 없는 adultTest 항목을 전송하거나 요구하지 않습니다. 선택적 접근 코드 확인 후 짧은 일회용 권한 발급.
 3. HttpOnly/SameSite=Strict 쿠키와 일회용 token을 묶어 브라우저 WebSocket의 첫 start 메시지에서 확인. URL query에 token/제공자 키를 넣지 않음.
 4. Railway → wss://api.openai.com/v1/realtime?model=... 연결, Authorization 헤더로 서버 키 전달.
 5. session.update: 24kHz PCM input/output, server_vad(create_response:false, interrupt_response:true), audio 응답, 최대 출력 512 tokens, 한국어 안내. committed 이벤트마다 서버가 현재 생활표와 제안 빈도를 판단해 개별 instructions의 response.create를 전송. 중복 발화 확정과 취소 중 응답 겹침 방지.

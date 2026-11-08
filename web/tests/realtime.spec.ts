@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { REALTIME_POLICY } from '../shared/realtime-policy.mjs';
 async function localConsent(page:Page) {await page.locator('#login-button').click();await page.locator('#consent-checkbox').check();await page.locator('#consent-accept').click();}
 async function connect(page:Page) {await localConsent(page);await page.locator('#realtime-consent').check();await expect(page.locator('#realtime-connect')).toBeEnabled();await page.locator('#realtime-connect').click();}
 test.beforeEach(async({page})=>{
@@ -16,6 +17,8 @@ test('removed connection-summary card is absent and real conversation is present
   await page.goto('./');await expect(page.locator('.session-card')).toHaveCount(0);
   await expect(page.getByText('지금의 연결 상태',{exact:true})).toHaveCount(0);
   await expect(page.getByRole('heading',{name:'모모와 지금 이야기해요'})).toBeVisible();
+  await expect(page.locator('.realtime-consent')).toHaveText('대화 중 음성이 OpenAI로 실시간 전송되는 것에 동의합니다.');
+  await expect(page.locator('.conversation-hint')).toHaveCount(0);
   expect(await page.evaluate(()=>(window as any).__micCalls)).toBe(0);
 });
 test('local and separate external-transmission consent are both required',async({page})=>{
@@ -26,10 +29,14 @@ test('local and separate external-transmission consent are both required',async(
 });
 test('microphone streams through the real relay and response chunks are played',async({page})=>{
   const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
+  const admissions:any[]=[];
+  page.on('request',request=>{if(request.url().endsWith('/api/realtime/session')&&request.method()==='POST')admissions.push(request.postDataJSON());});
   await page.goto('./');await connect(page);
   await expect(page.locator('#realtime-status')).toHaveText('듣고 있어요',{timeout:10000});
   await expect.poll(()=>page.evaluate(()=>(window as any).__plays.length),{timeout:10000}).toBeGreaterThan(0);
   const play=await page.evaluate(()=>(window as any).__plays[0]);expect(play).toMatchObject({rate:24000,frames:4800});
+  expect(admissions[0]).toMatchObject({consent:true,policy:REALTIME_POLICY});
+  expect(admissions[0]).not.toHaveProperty('adultTest');
   await expect(page.locator('#record')).toBeDisabled();
   await page.locator('#realtime-mute').click();await expect(page.locator('#realtime-mute')).toHaveText('마이크 켜기');
   expect(await page.evaluate(()=>(window as any).__tracks.every((t:MediaStreamTrack)=>!t.enabled))).toBe(true);
@@ -59,7 +66,7 @@ test('cancel while permission is pending cannot activate a late microphone',asyn
   await expect(page.locator('#realtime-status')).toHaveText('대화 준비');
 });
 test('missing key is explained without enabling microphone or leaking credentials',async({page})=>{
-  await page.route('**/api/realtime/config',route=>route.fulfill({json:{available:false,requiresAccessCode:false,model:'mock',maxSeconds:120,policy:'realtime-adult-test-v1'}}));
+  await page.route('**/api/realtime/config',route=>route.fulfill({json:{available:false,requiresAccessCode:false,model:'mock',maxSeconds:120,policy:REALTIME_POLICY}}));
   await page.goto('./');await expect(page.locator('#realtime-connect')).toBeDisabled();
   await expect(page.locator('#realtime-message')).toContainText('OPENAI_API_KEY');
   expect(await page.evaluate(()=>(window as any).__micCalls)).toBe(0);

@@ -1,8 +1,9 @@
 import { randomBytes, timingSafeEqual } from 'node:crypto';
 import { WebSocket, WebSocketServer } from 'ws';
 import { emptyLifeGuide, parseLifeGuide, LifeGuidePlanner } from '../shared/life-guide.mjs';
-export const REALTIME_POLICY = 'realtime-adult-test-v1';
-const BASE_INSTRUCTIONS = '너의 이름은 모모야. 성인 개발자와 음성 연결을 시험하고 있어. 한국어로 친절하고 짧게 대화해. 개인정보를 요구하지 말고, 너는 AI임을 숨기지 마. 의료·위험한 행동에 대한 단정적인 조언을 하지 마. 생활 화두는 이번 응답의 지침에서 허용한 경우에만 먼저 꺼내. 사용자가 직접 물어본 생활 주제에는 자연스럽게 답해.';
+import { REALTIME_POLICY } from '../shared/realtime-policy.mjs';
+import { MOMO_BASE_PROMPT, buildResponseInstructions } from './momo-prompt.mjs';
+export { REALTIME_POLICY };
 const MAX_FRAME = 16384;
 function safeEqual(a, b) {
   const x = Buffer.from(String(a || '')), y = Buffer.from(String(b || ''));
@@ -75,7 +76,7 @@ export function attachRealtime(server, options = {}) {
     if (!req.headers['content-type']?.startsWith('application/json')) { json(res, 415, { code:'JSON_REQUIRED' }); return true; }
     try {
       const body = await readJson(req);
-      if (body?.consent !== true || body?.adultTest !== true || body?.policy !== REALTIME_POLICY) {
+      if (body?.consent !== true || body?.policy !== REALTIME_POLICY) {
         json(res, 403, { code:'CONSENT_REQUIRED' }); return true;
       }
       if (accessCode && !safeEqual(body.accessCode, accessCode)) { json(res, 403, { code:'ACCESS_DENIED' }); return true; }
@@ -137,10 +138,7 @@ export function attachRealtime(server, options = {}) {
       if (!pendingTurn || responseInFlight || !ready || finished) return;
       pendingTurn = false; responseInFlight = true; cancelRequested = false;
       const cue = planner.nextCue(options.now?.() ?? new Date());
-      const instruction = cue
-        ? `이번 답변에서 부모님이 선택한 생활 항목은 「${cue.label}」, 시간대는 ${cue.time}. 사용자의 말에 먼저 답하고 흐름이 어울리면 이 항목을 짧은 한국어 질문 하나로 부드럽게 연결해. 명령하거나 재촉하거나 죄책감을 주지 마. 이미 했거나 원하지 않는다고 하면 존중해. 설정이나 알림, 확률을 언급하지 마. 맞지 않는 흐름이면 생략해도 돼.`
-        : '이번 답변에서는 생활 습관이나 일정 화두를 먼저 꺼내지 말고 사용자의 말에 집중해. 사용자가 직접 물은 생활 주제에는 답해도 돼.';
-      upstreamSend({type:'response.create',response:{instructions:BASE_INSTRUCTIONS + '\n' + instruction}});
+      upstreamSend({type:'response.create',response:{instructions:buildResponseInstructions(cue)}});
     }
     client.on('message', (data, binary) => {
       if (finished) return;
@@ -162,7 +160,7 @@ export function attachRealtime(server, options = {}) {
         });
         upstream.on('open', () => upstreamSend({ type:'session.update', session: {
           type:'realtime', output_modalities:['audio'], max_output_tokens:512,
-          instructions:BASE_INSTRUCTIONS,
+          instructions:MOMO_BASE_PROMPT,
           audio: {
             input: { format:{type:'audio/pcm',rate:24000}, turn_detection:{type:'server_vad',threshold:0.5,prefix_padding_ms:300,silence_duration_ms:650,create_response:false,interrupt_response:true} },
             output: { format:{type:'audio/pcm',rate:24000}, voice },

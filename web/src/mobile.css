@@ -68,7 +68,7 @@
   .conversation-stage { padding: 20px 12px; margin-bottom: 16px; }
   .conversation-orb { width: 64px; height: 64px; margin-bottom: 16px; }
   .conversation-stage > p:first-of-type { font-size: 14px; line-height: 1.6; }
-  .conversation-hint { font-size: 12px; line-height: 1.6; margin-top: 8px; }
+
   .realtime-consent { font-size: 13px; line-height: 1.65; gap: 10px; }
   .realtime-consent input { width: 18px; height: 18px; }
   .conversation-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 16px; }

@@ -15,6 +15,7 @@ npm run dev
 터미널에서 안내하는 개발 서버를 브라우저로 여세요. 기본 포트는 5173입니다. 다른 기기나 공개 도메인에서 실제 마이크를 쓰려면 **HTTPS**가 필요합니다. 클라우드 테스트는 브라우저의 가상 마이크를 사용하며, 사용자의 실제 장치 청취를 검증하지는 않습니다.
 
 - [Realtime 연결 및 Railway 변수 설정](docs/realtime_setup.md)
+- [모모 기본 답변 프롬프트 — 3~6세 대화 지침](docs/momo_prompt.md)
 - [라이프 가이드 — 부모님 생활 시간 설정과 대화 화두](docs/life_guide.md)
 - [PostgreSQL 연결 — 웹 서비스 DATABASE_URL 설정](docs/railway_deployment.md#postgresql-생활-시간표-저장)
 - [Railway 배포 안내 — 현재 배포 대상](docs/railway_deployment.md)

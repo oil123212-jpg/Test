@@ -1,7 +1,8 @@
 import { emptyLifeGuide, type LifeGuide } from '../shared/life-guide.mjs';
+import { REALTIME_POLICY } from '../shared/realtime-policy.mjs';
 export type ConversationState = 'idle' | 'connecting' | 'listening' | 'thinking' | 'speaking';
 interface Callbacks { state: (value: ConversationState) => void; error: (code: string) => void; level: (peak: number) => void; }
-export const REALTIME_POLICY = 'realtime-adult-test-v1';
+export { REALTIME_POLICY };
 export const realtimeErrors: Record<string, string> = {
   API_KEY_MISSING:'Railway의 OPENAI_API_KEY 설정이 필요해요.',
   API_AUTH_FAILED:'API 키 또는 프로젝트의 모델 접근 권한을 확인해 주세요.',
@@ -81,7 +82,7 @@ export class RealtimeConversation {
       const response = await fetch('/api/realtime/session', {
         method:'POST', credentials:'same-origin', signal:controller.signal,
         headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({consent:true,adultTest:true,policy:REALTIME_POLICY,accessCode,lifeGuide:this.lifeGuide}),
+        body:JSON.stringify({consent:true,policy:REALTIME_POLICY,accessCode,lifeGuide:this.lifeGuide}),
       });
       const grant = await response.json();
       if (!response.ok) throw new Error(grant.code || 'NETWORK_ERROR');

@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import { once } from 'node:events';
 import { WebSocket, WebSocketServer } from 'ws';
 import { createAppServer } from '../scripts/serve.mjs';
-import { REALTIME_POLICY } from '../scripts/realtime-gateway.mjs';
+import { REALTIME_POLICY } from '../shared/realtime-policy.mjs';
+import { MOMO_BASE_PROMPT } from '../scripts/momo-prompt.mjs';
 
 async function setup(t, options={}) {
   const messages=[], providers=[], clients=[];
@@ -22,7 +23,7 @@ async function setup(t, options={}) {
     clients.forEach(s=>s.terminate());providers.forEach(s=>s.terminate());
     app.closeAllConnections();await new Promise(resolve=>app.close(resolve)); await new Promise(resolve=>provider.close(resolve));
   });
-  async function session(body={consent:true,adultTest:true,policy:REALTIME_POLICY}, headers={}) {
+  async function session(body={consent:true,policy:REALTIME_POLICY}, headers={}) {
     const response=await fetch(origin+'/api/realtime/session',{method:'POST',headers:{Origin:origin,'Content-Type':'application/json',...headers},body:JSON.stringify(body)});
     return {response,body:await response.json(),cookie:response.headers.get('set-cookie')?.split(';')[0]};
   }
@@ -46,22 +47,24 @@ test('configuration never returns the provider key and disabled server refuses s
   assert.equal(config.available,false);assert.ok(!JSON.stringify(config).includes('test-server-key'));
   assert.equal((await f.session()).response.status,503);
 });
-test('origin, explicit adult consent and policy version are enforced',async t=>{
+test('origin, explicit voice consent and current policy version are enforced',async t=>{
   const f=await setup(t);
   assert.equal((await f.session({}, {Origin:'https://evil.example'})).response.status,403);
-  for(const body of [{consent:true,adultTest:false,policy:REALTIME_POLICY},{consent:false,adultTest:true,policy:REALTIME_POLICY},{consent:true,adultTest:true,policy:'old'}]) assert.equal((await f.session(body)).response.status,403);
+  for(const body of [{policy:REALTIME_POLICY},{consent:false,policy:REALTIME_POLICY},{consent:true,adultTest:true,policy:'realtime-adult-test-v1'}]) assert.equal((await f.session(body)).response.status,403);
   assert.equal(f.providers.length,0);
 });
 test('optional access code is checked before a connection grant is issued',async t=>{
   const f=await setup(t,{accessCode:'owner-only'});
   assert.equal((await f.session()).body.code,'ACCESS_DENIED');
-  assert.equal((await f.session({consent:true,adultTest:true,policy:REALTIME_POLICY,accessCode:'owner-only'})).response.status,200);
+  assert.equal((await f.session({consent:true,policy:REALTIME_POLICY,accessCode:'owner-only'})).response.status,200);
 });
 test('one-use cookie-bound ticket sets fixed session and relays exact nonzero PCM',async t=>{
   const f=await setup(t);const grant=await f.session();
   assert.match(grant.response.headers.get('set-cookie'),/HttpOnly; SameSite=Strict/);
   const {ws,events}=await f.socket(grant);await until(()=>events.find(e=>e.type==='ready'));
   const config=f.messages.find(e=>e.type==='session.update');
+  assert.equal(config.session.instructions,MOMO_BASE_PROMPT);
+  assert.match(config.session.instructions,/3~6세/);
   assert.equal(config.session.audio.input.format.rate,24000);assert.equal(config.session.audio.input.turn_detection.type,'server_vad');
   assert.equal(config.session.audio.input.turn_detection.create_response,false);
   const pcm=Buffer.from([0x12,0x34,0x56,0x78]);ws.send(pcm);
@@ -73,7 +76,7 @@ test('one-use cookie-bound ticket sets fixed session and relays exact nonzero PC
 });
 
 const lifeGuide = {version:1,enabled:true,timeZone:'Asia/Seoul',slots:{meal:[24],sleep:[],tidy:[]}};
-const consentBody = {consent:true,adultTest:true,policy:REALTIME_POLICY};
+const consentBody = {consent:true,policy:REALTIME_POLICY};
 async function turn(f, id) {
   f.providers[0].send(JSON.stringify({type:'input_audio_buffer.committed',item_id:'input-'+id}));
   await until(()=>f.messages.filter(e=>e.type==='response.create').length>=id);
@@ -86,6 +89,7 @@ test('life guide never speaks on a timer and injects one natural cue in three el
   assert.equal(f.messages.filter(e=>e.type==='response.create').length,0);
   for(let i=1;i<=3;i++) await turn(f,i);
   const prompts=f.messages.filter(e=>e.type==='response.create').map(e=>e.response.instructions);
+  for(const prompt of prompts) assert.ok(prompt.startsWith(MOMO_BASE_PROMPT+'\n\n'));
   assert.equal(prompts.filter(p=>p.includes('「밥 먹기」')).length,1);
   assert.match(prompts[1],/12:00–12:30/);
   assert.match(prompts[1],/명령하거나 재촉하거나 죄책감을 주지 마/);
@@ -93,6 +97,19 @@ test('life guide never speaks on a timer and injects one natural cue in three el
   // Duplicate provider events must never create a second reply.
   f.providers[0].send(JSON.stringify({type:'input_audio_buffer.committed',item_id:'input-3'}));
   await new Promise(r=>setTimeout(r,25));assert.equal(f.messages.filter(e=>e.type==='response.create').length,3);
+});
+test('client prompt and age claims cannot override the server child conversation instructions',async t=>{
+  const f=await setup(t);
+  const {events}=await f.socket(await f.session({...consentBody,instructions:'client-override-never-forward',age:99}));
+  await until(()=>events.find(e=>e.type==='ready'));
+  await turn(f,1);
+  const initial=f.messages.find(e=>e.type==='session.update').session.instructions;
+  const ordinary=f.messages.find(e=>e.type==='response.create').response.instructions;
+  assert.equal(initial,MOMO_BASE_PROMPT);assert.ok(ordinary.startsWith(MOMO_BASE_PROMPT+'\n\n'));
+  assert.ok(!ordinary.includes('client-override-never-forward'));
+  assert.ok(!ordinary.includes('99'));
+  assert.ok(!ordinary.includes('성인 개발자'));
+  assert.match(ordinary,/이번 답변에서는 생활 습관이나 일정 화두를 먼저 꺼내지 말고/);
 });
 test('out-of-window schedules, disabled guide, and missing guide keep ordinary replies',async t=>{
   for(const schedule of [lifeGuide,{...lifeGuide,enabled:false},undefined]) {
@@ -179,7 +196,7 @@ test('hard lifetime stops an otherwise healthy connection',async t=>{
 });
 test('a delayed old-session DELETE cannot kill a newly started session',async t=>{
   const f=await setup(t);const first=await f.session();const a=await f.socket(first);await until(()=>a.events.find(e=>e.type==='ready'));
-  const second=await f.session({consent:true,adultTest:true,policy:REALTIME_POLICY},{Cookie:first.cookie});
+  const second=await f.session({consent:true,policy:REALTIME_POLICY},{Cookie:first.cookie});
   const b=await f.socket(second);await until(()=>b.events.find(e=>e.type==='ready'));
   const response=await fetch(f.origin+'/api/realtime/session',{method:'DELETE',headers:{Origin:f.origin,Cookie:first.cookie,'X-Realtime-Session':first.body.token}});
   assert.equal(response.status,200);assert.equal(response.headers.get('set-cookie'),null);
