@@ -59,7 +59,7 @@
         <form id="life-guide-form">
           <div class="life-guide-options card"><label class="life-guide-toggle"><input id="life-guide-enabled" type="checkbox" /><span><strong>생활 이야기를 모모에게 연결하기</strong><small>대화 시 설정을 Railway 서버에 보내고, 현재 시간대에 선택된 생활 항목과 시간을 OpenAI에 전달하는 데 동의해요.</small></span></label><label class="field-label" for="life-guide-timezone">생활 시간 기준</label><select id="life-guide-timezone"></select><p class="small-note">기기 시간이 바뀌어도 이 시간대를 기준으로 해요. 선택하지 않은 시간에는 생활 화두를 먼저 꺼내지 않아요.</p></div>
           <div id="life-guide-categories" class="life-guide-grid"></div>
-          <div class="life-guide-save card"><p id="life-guide-save-status" role="status" aria-live="polite">아직 저장한 생활 시간이 없어요.</p><div class="life-guide-actions"><button id="life-guide-save" type="submit" class="primary-button">저장하고 적용</button><button id="life-guide-delete" type="button" class="secondary-button">저장한 생활 시간 삭제</button><a href="#overview" class="text-button">모모와 대화하기 →</a></div><p class="small-note">설정은 이 브라우저에 저장돼요. 이용 종료 후에도 유지되며 다른 기기와 동기화되지 않아요. 삭제하면 브라우저 설정과 현재 대화에 전달할 생활 시간을 비워요. 음성이나 대화 내용은 저장하지 않아요.</p></div>
+          <div class="life-guide-save card"><p id="life-guide-save-status" role="status" aria-live="polite">체험 로그인 후 저장된 생활 시간을 불러올 수 있어요.</p><div class="life-guide-actions"><button id="life-guide-login" type="button" class="primary-button">로그인하고 불러오기</button><button id="life-guide-save" type="submit" class="primary-button" disabled>저장하고 적용</button><button id="life-guide-delete" type="button" class="secondary-button" disabled>저장한 생활 시간 삭제</button><a href="#overview" class="text-button">모모와 대화하기 →</a></div><p class="small-note">생활 시간표는 PostgreSQL DB에 저장돼요. 이 브라우저를 기억하는 쿠키로 구분하며, 같은 브라우저에서 체험 로그인하면 다시 불러와요. 쿠키를 삭제하거나 다른 브라우저를 쓰면 별도 기기로 구분돼요. DB에는 시간표와 구분용 식별자만 저장해요. 생활 이야기 연결 동의는 DB에 저장하지 않으며, 로그인할 때마다 직접 켜 주세요.</p></div>
         </form>
       </section>
     </main>
@@ -72,10 +72,10 @@
         <h3>어떤 정보를 처리하나요?</h3><p>선택한 마이크의 음성과 장치 정보를 오디오 점검에 사용해요. 실시간 대화를 선택하면 음성을 AI 응답 생성에 사용합니다. 이 사이트는 전사문을 표시하거나 저장하지 않아요.</p>
         <h3>어디에, 얼마나 보관하나요?</h3><p>음성은 현재 탭의 메모리에만 임시 보관해요. 삭제, 이용 종료, 탭 비활성화 또는 페이지 종료 시 정리하며 파일이나 브라우저 저장소에 저장하지 않아요.</p>
         <h3>외부로 보내나요?</h3><p>로컬 오디오 테스트는 외부로 보내지 않아요. 실시간 대화는 별도 동의 후 Railway 서버와 OpenAI로 음성을 전송합니다. 제공자 데이터 처리 조건과 호스팅 접속 기록 정책은 별도로 적용됩니다.</p>
-        <h3>생활 시간 설정은요?</h3><p>부모님이 저장한 라이프 가이드 설정은 이 브라우저에 유지돼요. 연결하기를 켜면 대화 중 Railway 서버가 설정을 처리하고 현재 시간대의 생활 항목과 시간을 OpenAI에 전달해요. 라이프 가이드에서 끄거나 저장한 생활 시간을 삭제할 수 있어요.</p>
+        <h3>생활 시간 설정은요?</h3><p>체험 로그인 후 선택한 생활 시간표와 브라우저 구분용 식별자를 Railway PostgreSQL DB에 저장해요. 브라우저를 기억하는 쿠키는 최대 1년간 유지되며 시간표는 직접 삭제할 때까지 남아요. 이름·음성·대화 내용과 연결 동의는 DB에 저장하지 않아요. 연결하기를 켜면 대화 중 현재 생활 항목과 시간을 OpenAI에 전달해요. 라이프 가이드에서 시간표를 삭제할 수 있어요. 계정 인증 없이 이 브라우저를 구분하는 테스트용 로그인입니다.</p>
         <h3>동의하지 않으면 어떻게 되나요?</h3><p>실제 마이크 테스트와 실시간 대화는 사용할 수 없지만 합성 음원 데모는 이용할 수 있어요. 이용 종료를 누르면 동의를 철회하고 임시 음성을 지울 수 있어요.</p>
       </div>
-      <label class="consent-checkbox"><input id="consent-checkbox" type="checkbox" required /><span><strong>[필수] 위 개인정보 처리 안내를 확인하고 로컬 오디오 테스트에 동의합니다.</strong></span></label>
+      <label class="consent-checkbox"><input id="consent-checkbox" type="checkbox" required /><span><strong>[필수] 위 안내를 확인하고 오디오 체험과 생활 시간표 저장 기능 이용에 동의합니다.</strong></span></label>
       <p class="small-note consent-note">브라우저 마이크 권한은 별도로 요청해요. 이 동의는 보호자 본인·법정대리인 확인이나 아동 음성의 외부 전송 허용을 의미하지 않아요.</p>
       <div class="consent-actions"><button id="consent-decline" type="button" class="secondary-button">동의하지 않음</button><button id="consent-accept" type="submit" class="primary-button" disabled>동의하고 체험 시작</button></div>
     </form>

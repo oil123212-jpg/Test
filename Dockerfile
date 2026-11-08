@@ -14,7 +14,7 @@ ENV NODE_ENV=production
 WORKDIR /app
 COPY --from=build --chown=node:node /app/dist ./dist
 COPY --from=build --chown=node:node /app/node_modules ./node_modules
-COPY --chown=node:node web/scripts/serve.mjs web/scripts/realtime-gateway.mjs ./scripts/
+COPY --chown=node:node web/scripts/serve.mjs web/scripts/realtime-gateway.mjs web/scripts/life-guide-store.mjs ./scripts/
 COPY --chown=node:node web/shared ./shared
 COPY --chown=node:node web/package.json ./package.json
 USER node

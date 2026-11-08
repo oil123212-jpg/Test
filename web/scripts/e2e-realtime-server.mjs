@@ -2,6 +2,11 @@
 import { WebSocketServer } from 'ws';
 import { once } from 'node:events';
 import { createAppServer } from './serve.mjs';
+import { postgresLifeGuideStore } from './life-guide-store.mjs';
+const rows = new Map();
+const store = process.env.LIFE_GUIDE_TEST_DATABASE_URL ? postgresLifeGuideStore(process.env.LIFE_GUIDE_TEST_DATABASE_URL) : {
+  ready: async()=>{},get:async key=>rows.get(key)??null,save:async(key,value)=>{rows.set(key,structuredClone(value));},delete:async key=>{rows.delete(key);},close:async()=>{},
+};
 const provider=new WebSocketServer({port:0,host:'127.0.0.1'});await once(provider,'listening');
 provider.on('connection',socket=>{
   let frames=0,sequence=0;
@@ -30,7 +35,7 @@ provider.on('connection',socket=>{
   });
   socket.on('close',()=>timers.forEach(clearTimeout));
 });
-const server=createAppServer(undefined,{apiKey:'mock-provider-key-never-published',model:'mock-realtime',upstreamURL:`ws://127.0.0.1:${provider.address().port}`,hourlyLimit:200,maxConcurrent:4});
+const server=createAppServer(undefined,{apiKey:'mock-provider-key-never-published',model:'mock-realtime',upstreamURL:`ws://127.0.0.1:${provider.address().port}`,hourlyLimit:200,maxConcurrent:4},{store});
 server.listen(Number(process.env.PORT||4173),'0.0.0.0');
 const close=()=>{for(const client of provider.clients)client.terminate();server.close(()=>provider.close(()=>process.exit(0)));setTimeout(()=>process.exit(0),2000).unref();};
 process.once('SIGTERM',close);process.once('SIGINT',close);

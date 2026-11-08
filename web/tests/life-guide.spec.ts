@@ -1,57 +1,57 @@
-import { test, expect } from '@playwright/test';
-const key = 'momo.life-guide.v1';
-test('parents select multiple half hours, save, reload and delete on desktop and mobile', async ({page}, testInfo) => {
-  const errors: string[]=[]; page.on('pageerror',error=>errors.push(error.message));
-  await page.goto('./#life-guide');
-  await expect(page.getByRole('heading',{name:'라이프 가이드',exact:true})).toBeVisible();
-  await expect(page.locator('#overview-view')).toBeHidden();
+import { test, expect, type Page } from '@playwright/test';
+test.skip(process.env.WEB_SERVER_TARGET !== 'realtime','Requires the production API test fixture; use npm run test:realtime.');
+async function login(page: Page) {
+  await page.locator('#login-button').click(); await page.locator('#consent-checkbox').check(); await page.locator('#consent-accept').click();
+  await expect(page.locator('#life-guide-save')).toBeEnabled();
+}
+test('DB times survive logout, reload and relogin; consent stays off and deletion persists',async({page},testInfo)=>{
+  const errors:string[]=[];page.on('pageerror',error=>errors.push(error.message));
+  await page.goto('./#life-guide');await expect(page.locator('#life-guide-save')).toBeDisabled();await login(page);
   await expect(page.locator('.life-guide-slot input')).toHaveCount(144);
-  await page.locator('#life-meal-16').check();
-  await page.locator('#life-meal-17').check();
-  await page.locator('#life-sleep-42').check();
-  await page.locator('#life-tidy-32').check();
-  await page.locator('#life-guide-enabled').check();
-  await page.locator('#life-guide-save').click();
-  await expect(page.locator('#life-guide-save-status')).toContainText('저장했어요');
-  expect(await page.evaluate(key=>JSON.parse(localStorage.getItem(key)!),key)).toMatchObject({enabled:true,timeZone:'Asia/Seoul',slots:{meal:[16,17],sleep:[42],tidy:[32]}});
-  await page.reload();
-  await expect(page.locator('#life-meal-16')).toBeChecked();
-  await expect(page.locator('#life-sleep-42')).toBeChecked();
-  await expect(page.locator('#life-guide-enabled')).toBeChecked();
-  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
-  await page.screenshot({path:`test-results/${testInfo.project.name}-life-guide.png`,fullPage:true});
-  await page.getByRole('link',{name:'모모와 대화하기'}).click();
-  await expect(page.locator('#life-guide-conversation-status')).toContainText('켜짐');
-  await page.locator('[data-route="life-guide"]').click();
-  await page.locator('#life-guide-delete').click();
-  await expect(page.locator('#life-guide-enabled')).not.toBeChecked();
-  expect(await page.locator('.life-guide-slot input:checked').count()).toBe(0);
-  expect(await page.evaluate(key=>localStorage.getItem(key),key)).toBeNull();
-  await page.reload(); await expect(page.locator('#life-meal-16')).not.toBeChecked();
-  expect(errors).toEqual([]);
-});
-test('no default persistence, empty enabled guide is rejected, storage failure is explained',async({page})=>{
-  await page.goto('./#life-guide');
-  expect(await page.evaluate(()=>localStorage.length)).toBe(0);
+  for(const id of ['life-meal-16','life-meal-17','life-sleep-42','life-tidy-32'])await page.locator('#'+id).check();
   await page.locator('#life-guide-enabled').check();await page.locator('#life-guide-save').click();
-  await expect(page.locator('#life-guide-save-status')).toContainText('하나 이상');
+  await expect(page.locator('#life-guide-save-status')).toContainText('DB에 저장했어요');
+  const saved=await(await page.request.get('/api/life-guide')).json();
+  expect(saved.schedule).toEqual({version:1,timeZone:'Asia/Seoul',slots:{meal:[16,17],sleep:[42],tidy:[32]}});
   expect(await page.evaluate(()=>localStorage.length)).toBe(0);
-  await page.locator('#life-meal-16').check();
-  await page.evaluate(()=>{Storage.prototype.setItem=()=>{throw new DOMException('denied','QuotaExceededError');};});
-  await page.locator('#life-guide-save').click();
-  await expect(page.locator('#life-guide-save-status')).toContainText('저장하지 못했어요');
-  await page.locator('[data-route="overview"]').click();
-  await expect(page.locator('#life-guide-conversation-status')).toContainText('꺼짐');
+  await page.locator('#login-button').click();await expect(page.locator('#life-guide-save')).toBeDisabled();
+  await expect.poll(async()=>(await page.request.get('/api/life-guide')).status()).toBe(401);
+  await page.reload();await login(page);
+  await expect(page.locator('#life-meal-16')).toBeChecked();await expect(page.locator('#life-sleep-42')).toBeChecked();
+  await expect(page.locator('#life-guide-enabled')).not.toBeChecked();
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+  await page.screenshot({path:`test-results/${testInfo.project.name}-life-guide-db.png`,fullPage:true});
+  await page.locator('#life-guide-delete').click();await expect(page.locator('#life-guide-save-status')).toContainText('DB의 생활 시간을 삭제');
+  expect((await(await page.request.get('/api/life-guide')).json()).schedule).toBeNull();
+  await page.reload();await login(page);await expect(page.locator('#life-meal-16')).not.toBeChecked();expect(errors).toEqual([]);
 });
-test('corrupt saved data fails closed and other tabs can withdraw schedule use',async({page,context})=>{
-  await page.addInitScript(key=>{
-    if(!sessionStorage.getItem('seeded')) {localStorage.setItem(key,'{"enabled":true}');sessionStorage.setItem('seeded','yes');}
-  },key);
-  await page.goto('./#life-guide');
-  await expect(page.locator('#life-guide-save-status')).toContainText('읽지 못해');
-  await expect(page.locator('#life-guide-enabled')).not.toBeChecked();
-  await page.locator('#life-meal-16').check();await page.locator('#life-guide-enabled').check();await page.locator('#life-guide-save').click();
-  const second=await context.newPage();await second.goto('./#life-guide');await second.locator('#life-guide-delete').click();
-  await expect(page.locator('#life-guide-enabled')).not.toBeChecked();
-  await expect(page.locator('#life-guide-save-status')).toContainText('다른 탭');
+test('save failure retains applied guide; delete failure disables prompts without claiming DB deletion',async({page})=>{
+  await page.goto('./#life-guide');await login(page);
+  await page.locator('#life-guide-enabled').check();await page.locator('#life-guide-save').click();await expect(page.locator('#life-guide-save-status')).toContainText('하나 이상');
+  await page.locator('#life-meal-16').check();await page.locator('#life-guide-save').click();await expect(page.locator('#life-guide-save-status')).toContainText('DB에 저장했어요');
+  await page.route('**/api/life-guide',route=>route.request().method()==='GET'?route.continue():route.fulfill({status:503,json:{code:'DATABASE_UNAVAILABLE'}}));
+  await page.locator('#life-guide-enabled').uncheck();await page.locator('#life-guide-save').click();await expect(page.locator('#life-guide-save-status')).toContainText('변경 전 설정');
+  await page.locator('[data-route="overview"]').click();await expect(page.locator('#life-guide-conversation-status')).toContainText('켜짐');
+  await page.locator('[data-route="life-guide"]').click();await page.locator('#life-guide-delete').click();await expect(page.locator('#life-guide-save-status')).toContainText('DB 삭제는 완료하지 못했어요');
+  await page.locator('[data-route="overview"]').click();await expect(page.locator('#life-guide-conversation-status')).toContainText('꺼짐');
+});
+test('DB unavailable does not claim successful login or block local audio consent',async({page})=>{
+  await page.route('**/api/life-guide/login',route=>route.fulfill({status:503,json:{code:'DATABASE_NOT_CONFIGURED'}}));
+  await page.goto('./#life-guide');await page.locator('#life-guide-login').click();await page.locator('#consent-checkbox').check();await page.locator('#consent-accept').click();
+  await expect(page.locator('#life-guide-save-status')).toContainText('DATABASE_URL');await expect(page.locator('#life-guide-save')).toBeDisabled();await expect(page.locator('#login-button')).toHaveText('이용 종료');
+  await page.locator('[data-route="overview"]').click();await page.locator('#try-demo').click();await expect(page.locator('#play')).toBeEnabled();
+});
+test('different browser contexts keep schedules separate',async({page,browser})=>{
+  await page.goto('./#life-guide');await login(page);await page.locator('#life-meal-16').check();await page.locator('#life-guide-save').click();await expect(page.locator('#life-guide-save-status')).toContainText('DB에 저장했어요');
+  const other=await browser.newContext();const second=await other.newPage();
+  try {await second.goto(page.url());await login(second);await expect(second.locator('#life-meal-16')).not.toBeChecked();}finally {await other.close();}
+});
+test('old local schedule becomes an unsaved draft without silent DB writes',async({page})=>{
+  await page.addInitScript(()=>localStorage.setItem('momo.life-guide.v1',JSON.stringify({version:1,enabled:true,timeZone:'Asia/Seoul',slots:{meal:[16],sleep:[],tidy:[]}})));
+  await page.goto('./#life-guide');await login(page);
+  await expect(page.locator('#life-meal-16')).toBeChecked();await expect(page.locator('#life-guide-enabled')).not.toBeChecked();
+  await expect(page.locator('#life-guide-save-status')).toContainText('아직 DB에 저장되지 않았어요');
+  expect((await(await page.request.get('/api/life-guide')).json()).schedule).toBeNull();
+  await page.locator('#life-guide-save').click();await expect(page.locator('#life-guide-save-status')).toContainText('DB에 저장했어요');
+  expect(await page.evaluate(()=>localStorage.getItem('momo.life-guide.v1'))).toBeNull();
 });

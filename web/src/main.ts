@@ -125,7 +125,7 @@ const conversation = new RealtimeConversation({
   error(code) { const message=realtimeErrors[code] || realtimeErrors.UPSTREAM_UNAVAILABLE; $('realtime-message').textContent=message; $('realtime-status').textContent='연결 확인 필요'; toast(message,true); },
   level(peak) { $('conversation-orb').style.setProperty('--voice-scale',String(1+Math.min(.2,peak*.3))); },
 });
-const lifeGuide = mountLifeGuide(guide => conversation.updateLifeGuide(guide));
+const lifeGuide = mountLifeGuide(guide => conversation.updateLifeGuide(guide), () => { if (localAudioConsent) void lifeGuide.login(); else openConsent(); });
 $('realtime-connect').addEventListener('click', () => {
   if(!requireAudioConsent()) return;
   if(!$<HTMLInputElement>('realtime-consent').checked) { $<HTMLInputElement>('realtime-consent').focus(); toast('실시간 음성 전송 안내에 동의해 주세요.'); return; }
@@ -162,6 +162,7 @@ function openConsent() {
   if (!consentDialog.open) consentDialog.showModal();
 }
 function endSession(message?: string) {
+  lifeGuide.logout();
   localAudioConsent = false;
   $<HTMLInputElement>('realtime-consent').checked = false;
   $<HTMLInputElement>('realtime-access-code').value = '';
@@ -186,6 +187,7 @@ $('consent-form').addEventListener('submit', event => {
   event.preventDefault();
   if (!consentCheckbox.checked) { consentCheckbox.focus(); return; }
   localAudioConsent = true;
+  void lifeGuide.login();
   updateConsentButton(); consentDialog.close('accepted');
   toast('이 탭의 오디오 체험 동의를 확인했어요. 마이크 테스트를 직접 눌러 시작하세요.');
 });

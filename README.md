@@ -16,6 +16,7 @@ npm run dev
 
 - [Realtime 연결 및 Railway 변수 설정](docs/realtime_setup.md)
 - [라이프 가이드 — 부모님 생활 시간 설정과 대화 화두](docs/life_guide.md)
+- [PostgreSQL 연결 — 웹 서비스 DATABASE_URL 설정](docs/railway_deployment.md#postgresql-생활-시간표-저장)
 - [Railway 배포 안내 — 현재 배포 대상](docs/railway_deployment.md)
 - [웹 실행·테스트·배포 안내](web/README.md)
 - [웹 전환 설계 및 Phase 1 준비 계획](docs/web_transition.md)

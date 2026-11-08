@@ -69,7 +69,12 @@ test('device inspection stops microphone without recording', async ({ page }) =>
 });
 test('native worklet records 5 seconds and resamples to 24kHz without autoplay', async ({ page }) => {
   const uploads: string[] = [];
-  page.on('request', request => { if (request.method() !== 'GET' || new URL(request.url()).hostname !== '127.0.0.1') uploads.push(request.url()); });
+  page.on('request', request => {
+    const url=new URL(request.url());
+    // Login sends consent metadata; audio or other uploads still fail this check.
+    if (url.pathname === '/api/life-guide/login' && request.method() === 'POST' && JSON.stringify(request.postDataJSON()) === JSON.stringify({consent:true,policy:'life-guide-storage-v1'})) return;
+    if (request.method() !== 'GET' || url.hostname !== '127.0.0.1') uploads.push(request.url());
+  });
   await page.goto('./'); await consentToLocalAudio(page); await page.locator('#record').click();
   await expect(page.locator('#audio-state')).toHaveText('녹음 중');
   await expect(page.locator('#audio-state')).toHaveText('녹음 완료', { timeout: 12000 });

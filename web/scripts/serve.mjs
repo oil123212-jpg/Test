@@ -1,5 +1,6 @@
 import { createServer } from 'node:http';
 import { attachRealtime } from './realtime-gateway.mjs';
+import { attachLifeGuideStorage } from './life-guide-store.mjs';
 import { createReadStream } from 'node:fs';
 import { realpath, stat } from 'node:fs/promises';
 import { resolve, extname, sep } from 'node:path';
@@ -14,16 +15,16 @@ const securityHeaders = {
 };
 const mime = { '.html':'text/html; charset=utf-8', '.js':'text/javascript; charset=utf-8', '.css':'text/css; charset=utf-8', '.svg':'image/svg+xml', '.json':'application/json; charset=utf-8', '.png':'image/png', '.ico':'image/x-icon', '.woff2':'font/woff2' };
 
-export function createAppServer(root = defaultRoot, realtimeOptions = {}) {
+export function createAppServer(root = defaultRoot, realtimeOptions = {}, storageOptions = {}) {
   const absoluteRoot = resolve(root);
-  let realtime;
+  let realtime, storage;
   const server = createServer(async (req, res) => {
     for (const [name, value] of Object.entries(securityHeaders)) res.setHeader(name, value);
     const reply = (status, message) => {
       res.writeHead(status, { 'Content-Type':'text/plain; charset=utf-8', 'Cache-Control':'no-store' });
       res.end(req.method === 'HEAD' ? undefined : message);
     };
-    if (await realtime.handle(req, res)) return;
+    if (await storage.handle(req, res) || await realtime.handle(req, res)) return;
     if (req.method !== 'GET' && req.method !== 'HEAD') {
       res.setHeader('Allow', 'GET, HEAD'); reply(405, 'Method not allowed'); return;
     }
@@ -59,6 +60,7 @@ export function createAppServer(root = defaultRoot, realtimeOptions = {}) {
     }
   });
   realtime = attachRealtime(server, realtimeOptions);
+  storage = attachLifeGuideStorage(server, storageOptions);
   return server;
 }
 

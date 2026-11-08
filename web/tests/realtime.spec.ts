@@ -83,8 +83,10 @@ test('saved guide is relayed with consent and live deletion disables future life
   const admissions:any[]=[];
   page.on('request',request=>{if(request.url().endsWith('/api/realtime/session')&&request.method()==='POST')admissions.push(request.postDataJSON());});
   await page.goto('./#life-guide');
+  await localConsent(page); await expect(page.locator('#life-guide-save')).toBeEnabled();
   await page.locator('#life-meal-16').check();await page.locator('#life-guide-enabled').check();await page.locator('#life-guide-save').click();
-  await page.locator('[data-route="overview"]').click();await connect(page);
+  await expect(page.locator('#life-guide-save-status')).toContainText('DB에 저장했어요');
+  await page.locator('[data-route="overview"]').click();await page.locator('#realtime-consent').check();await page.locator('#realtime-connect').click();
   await expect(page.locator('#realtime-status')).toHaveText('듣고 있어요');
   expect(admissions[0].lifeGuide).toMatchObject({enabled:true,slots:{meal:[16]}});
   await page.locator('[data-route="life-guide"]').click();await page.locator('#life-guide-delete').click();
@@ -92,14 +94,15 @@ test('saved guide is relayed with consent and live deletion disables future life
   expect(commands.filter(c=>c.type==='life_guide.update').at(-1).lifeGuide.slots).toEqual({meal:[],sleep:[],tidy:[]});
   await page.locator('[data-route="overview"]').click();await page.locator('#realtime-end').click();
 });
-test('disabled saved schedule is retained locally but its times are not transmitted',async({page})=>{
+test('disabled schedule stays in DB but its times are not sent to Realtime',async({page})=>{
   await page.routeWebSocket('**/api/realtime',socket=>socket.onMessage(raw=>{if(typeof raw==='string'&&JSON.parse(raw).type==='start')socket.send(JSON.stringify({type:'ready'}));}));
   const admissions:any[]=[];
   page.on('request',request=>{if(request.url().endsWith('/api/realtime/session')&&request.method()==='POST')admissions.push(request.postDataJSON());});
-  await page.goto('./#life-guide');await page.locator('#life-meal-16').check();await page.locator('#life-guide-save').click();
-  await page.locator('[data-route="overview"]').click();await connect(page);
+  await page.goto('./#life-guide');await localConsent(page);await expect(page.locator('#life-guide-save')).toBeEnabled();await page.locator('#life-meal-16').check();await page.locator('#life-guide-save').click();
+  await expect(page.locator('#life-guide-save-status')).toContainText('DB에 저장했어요');
+  await page.locator('[data-route="overview"]').click();await page.locator('#realtime-consent').check();await page.locator('#realtime-connect').click();
   await expect(page.locator('#realtime-status')).toHaveText('듣고 있어요');
   expect(admissions[0].lifeGuide).toMatchObject({enabled:false,slots:{meal:[],sleep:[],tidy:[]}});
-  expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('momo.life-guide.v1')!).slots.meal)).toEqual([16]);
+  expect((await(await page.request.get('/api/life-guide')).json()).schedule.slots.meal).toEqual([16]);
   await page.locator('#realtime-end').click();
 });
