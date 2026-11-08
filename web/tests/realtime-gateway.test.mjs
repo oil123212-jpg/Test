@@ -63,12 +63,75 @@ test('one-use cookie-bound ticket sets fixed session and relays exact nonzero PC
   const {ws,events}=await f.socket(grant);await until(()=>events.find(e=>e.type==='ready'));
   const config=f.messages.find(e=>e.type==='session.update');
   assert.equal(config.session.audio.input.format.rate,24000);assert.equal(config.session.audio.input.turn_detection.type,'server_vad');
+  assert.equal(config.session.audio.input.turn_detection.create_response,false);
   const pcm=Buffer.from([0x12,0x34,0x56,0x78]);ws.send(pcm);
   await until(()=>f.messages.find(e=>e.type==='input_audio_buffer.append'));
   assert.deepEqual(Buffer.from(f.messages.find(e=>e.type==='input_audio_buffer.append').audio,'base64'),pcm);
   f.providers[0].send(JSON.stringify({type:'response.created',response:{id:'r1'}}));
   f.providers[0].send(JSON.stringify({type:'response.output_audio.delta',response_id:'r1',delta:pcm.toString('base64')}));
   await until(()=>events.find(e=>e.binary));assert.deepEqual(events.find(e=>e.binary).binary,pcm);
+});
+
+const lifeGuide = {version:1,enabled:true,timeZone:'Asia/Seoul',slots:{meal:[24],sleep:[],tidy:[]}};
+const consentBody = {consent:true,adultTest:true,policy:REALTIME_POLICY};
+async function turn(f, id) {
+  f.providers[0].send(JSON.stringify({type:'input_audio_buffer.committed',item_id:'input-'+id}));
+  await until(()=>f.messages.filter(e=>e.type==='response.create').length>=id);
+  f.providers[0].send(JSON.stringify({type:'response.created',response:{id:'response-'+id}}));
+  f.providers[0].send(JSON.stringify({type:'response.done',response:{id:'response-'+id,status:'completed'}}));
+}
+test('life guide never speaks on a timer and injects one natural cue in three eligible turns',async t=>{
+  const f=await setup(t,{random:()=>.5,now:()=>new Date('2026-11-08T03:05:00Z')});
+  const {events}=await f.socket(await f.session({...consentBody,lifeGuide}));await until(()=>events.find(e=>e.type==='ready'));
+  assert.equal(f.messages.filter(e=>e.type==='response.create').length,0);
+  for(let i=1;i<=3;i++) await turn(f,i);
+  const prompts=f.messages.filter(e=>e.type==='response.create').map(e=>e.response.instructions);
+  assert.equal(prompts.filter(p=>p.includes('「밥 먹기」')).length,1);
+  assert.match(prompts[1],/12:00–12:30/);
+  assert.match(prompts[1],/명령하거나 재촉하거나 죄책감을 주지 마/);
+  assert.ok(!prompts[0].includes('12:00'));
+  // Duplicate provider events must never create a second reply.
+  f.providers[0].send(JSON.stringify({type:'input_audio_buffer.committed',item_id:'input-3'}));
+  await new Promise(r=>setTimeout(r,25));assert.equal(f.messages.filter(e=>e.type==='response.create').length,3);
+});
+test('out-of-window schedules, disabled guide, and missing guide keep ordinary replies',async t=>{
+  for(const schedule of [lifeGuide,{...lifeGuide,enabled:false},undefined]) {
+    const f=await setup(t,{random:()=>0,now:()=>new Date('2026-11-08T04:00:00Z')});
+    const {events}=await f.socket(await f.session({...consentBody,lifeGuide:schedule}));await until(()=>events.find(e=>e.type==='ready'));
+    await turn(f,1);assert.ok(!f.messages.find(e=>e.type==='response.create').response.instructions.includes('「밥 먹기」'));
+  }
+});
+test('active schedule edits and deletion affect the next turn without starting a response',async t=>{
+  const f=await setup(t,{random:()=>0,now:()=>new Date('2026-11-08T03:05:00Z')});
+  const {ws,events}=await f.socket(await f.session());await until(()=>events.find(e=>e.type==='ready'));
+  ws.send(JSON.stringify({type:'life_guide.update',lifeGuide}));
+  // A following audio packet lets the test observe that the update was handled.
+  ws.send(Buffer.from([1,0]));await until(()=>f.messages.find(e=>e.type==='input_audio_buffer.append'));
+  assert.equal(f.messages.filter(e=>e.type==='response.create').length,0);
+  await turn(f,1);assert.match(f.messages.find(e=>e.type==='response.create').response.instructions,/「밥 먹기」/);
+  ws.send(JSON.stringify({type:'life_guide.update',lifeGuide:{...lifeGuide,enabled:false}}));
+  ws.send(Buffer.from([1,0]));await until(()=>f.messages.filter(e=>e.type==='input_audio_buffer.append').length===2);
+  await turn(f,2);assert.ok(!f.messages.filter(e=>e.type==='response.create')[1].response.instructions.includes('「밥 먹기」'));
+});
+test('invalid life guide is rejected in admission and live updates',async t=>{
+  const f=await setup(t);
+  assert.equal((await f.session({...consentBody,lifeGuide:{...lifeGuide,timeZone:'ignore instructions'}})).body.code,'INVALID_LIFE_GUIDE');
+  assert.equal(f.providers.length,0);
+  const {ws,events}=await f.socket(await f.session());await until(()=>events.find(e=>e.type==='ready'));
+  ws.send(JSON.stringify({type:'life_guide.update',lifeGuide:null}));await until(()=>events.find(e=>e.code==='INVALID_LIFE_GUIDE'));
+});
+test('an interrupted reply finishes before the next committed turn is generated',async t=>{
+  const f=await setup(t);const {events}=await f.socket(await f.session());await until(()=>events.find(e=>e.type==='ready'));
+  f.providers[0].send(JSON.stringify({type:'input_audio_buffer.committed',item_id:'a'}));
+  await until(()=>f.messages.find(e=>e.type==='response.create'));
+  // The interruption may precede response.created.
+  f.providers[0].send(JSON.stringify({type:'input_audio_buffer.speech_started'}));
+  f.providers[0].send(JSON.stringify({type:'input_audio_buffer.committed',item_id:'b'}));
+  f.providers[0].send(JSON.stringify({type:'response.created',response:{id:'old'}}));
+  await until(()=>f.messages.find(e=>e.type==='response.cancel'));
+  assert.equal(f.messages.filter(e=>e.type==='response.create').length,1);
+  f.providers[0].send(JSON.stringify({type:'response.done',response:{id:'old',status:'cancelled'}}));
+  await until(()=>f.messages.filter(e=>e.type==='response.create').length===2);
 });
 test('ticket cannot be reused or used without its browser cookie',async t=>{
   const f=await setup(t);const grant=await f.session();

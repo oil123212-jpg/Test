@@ -115,7 +115,7 @@ test('settings reset remains accessible after removing privacy and checklist pag
 });
 test('removed menu items and inbound links are absent', async ({ page }) => {
   await page.goto('./');
-  await expect(page.locator('nav [data-route]')).toHaveCount(2);
+  await expect(page.locator('nav [data-route]')).toHaveCount(3);
   await expect(page.locator('[data-route="privacy"], [data-route="checklist"], a[href="#privacy"], a[href="#checklist"]')).toHaveCount(0);
   await expect(page.locator('#privacy-view, #checklist-view, .bottom-grid')).toHaveCount(0);
 });

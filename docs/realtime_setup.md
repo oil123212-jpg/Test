@@ -13,7 +13,7 @@
 - REALTIME_ACCESS_CODE: 선택. 공개 서비스에는 충분히 긴 테스트 접근 코드를 설정하는 것을 권장합니다. 설정하면 대화 화면에 입력란이 표시됩니다.
 - PUBLIC_APP_ORIGIN: 선택. 지정 시 https://test-production-a904.up.railway.app처럼 정확한 서비스 Origin을 사용합니다. 미설정 시 요청 Host와 브라우저 Origin이 일치해야 합니다.
 
-배포 후 체험 로그인에서 안내에 동의하고, 실시간 대화 영역의 **별도 음성 전송 동의**를 체크한 뒤 대화 시작을 누르세요. 마이크를 허용하면 말이 끝났을 때 서버 VAD가 응답을 요청합니다. 마이크 끄기/켜기, 응답 중단, 대화 종료를 제공합니다. 이용 종료·외부 전송 동의 철회·탭 비활성화 때 연결과 마이크를 정리합니다.
+배포 후 체험 로그인에서 안내에 동의하고, 실시간 대화 영역의 **별도 음성 전송 동의**를 체크한 뒤 대화 시작을 누르세요. 마이크를 허용하면 말이 끝났을 때 서버 VAD가 발화를 확정하고 Railway가 응답을 요청합니다. 마이크 끄기/켜기, 응답 중단, 대화 종료를 제공합니다. 이용 종료·외부 전송 동의 철회·탭 비활성화 때 연결과 마이크를 정리합니다. 부모님용 [라이프 가이드](life_guide.md)에서 생활 시간을 선택하면 해당 시간대의 대화에 가끔 생활 화두를 연결합니다.
 
 현재는 성인 개발자용 시험입니다. 기존 체험 체크박스가 법정대리인 확인이나 실제 아동 데이터 외부 전송 승인을 의미하지 않습니다. 아동 음성 적용은 제공자/개인정보 요건 검토와 검증된 동의 흐름을 별도로 완료한 뒤 진행해야 합니다. 서버의 프롬프트도 성인 연결 시험으로 설정했습니다.
 
@@ -23,7 +23,7 @@
 2. POST /api/realtime/session: 동일 Origin + JSON + 현재 정책 버전 + 명시적 외부 전송/성인 시험 확인을 검증. 선택적 접근 코드 확인 후 짧은 일회용 권한 발급.
 3. HttpOnly/SameSite=Strict 쿠키와 일회용 token을 묶어 브라우저 WebSocket의 첫 start 메시지에서 확인. URL query에 token/제공자 키를 넣지 않음.
 4. Railway → wss://api.openai.com/v1/realtime?model=... 연결, Authorization 헤더로 서버 키 전달.
-5. session.update: 24kHz PCM input/output, server_vad, audio 응답, 최대 출력 512 tokens, 한국어 안내.
+5. session.update: 24kHz PCM input/output, server_vad(create_response:false, interrupt_response:true), audio 응답, 최대 출력 512 tokens, 한국어 안내. committed 이벤트마다 서버가 현재 생활표와 제안 빈도를 판단해 개별 instructions의 response.create를 전송. 중복 발화 확정과 취소 중 응답 겹침 방지.
 6. 브라우저 AudioContext를 24kHz로 생성해 기기 샘플레이트 변환은 Web Audio에 맡김. AudioWorklet이 모노 PCM16 little-endian을 20ms(960바이트)씩 전송. 해당 포맷을 지원하지 않는 브라우저는 안내 후 중단.
 7. OpenAI response.output_audio.delta를 binary PCM으로 전달하고 브라우저에서 최대 8초까지 재생 대기. 마이크 echoCancellation/noiseSuppression을 활성화함.
 8. speech_started/응답 중단 시 재생 큐 제거. 수동 중단은 response.cancel 전송. 정확한 청취 길이 기반 conversation.item.truncate는 이 초기 구현에 포함하지 않음.
@@ -34,10 +34,11 @@
 - 기본 동시 연결 2개, 서버 인스턴스당 시간당 연결 시도 20회, 세션 최대 120초. admission 요청도 분당 40회 제한.
 - 이 제한은 **인스턴스 메모리** 기반이므로 재시작 때 초기화되고 여러 replica가 공유하지 않습니다. 전역 금액 한도를 보장하지 않습니다.
 - 체험 로그인은 계정 인증이 아닙니다. 공개 URL에서 비용을 보호하려면 REALTIME_ACCESS_CODE를 설정하고, 향후 실제 계정/공유 사용량 제한을 구현하세요.
-- 서버가 허용하는 클라이언트 명령은 start, cancel, clear, end와 제한된 binary PCM뿐입니다. 모델/프롬프트/임의 provider event를 브라우저에서 지정할 수 없습니다.
+- 서버가 허용하는 클라이언트 명령은 start, cancel, clear, end, 검증된 life_guide.update와 제한된 binary PCM뿐입니다. 모델/자유 형식 프롬프트/임의 provider event를 브라우저에서 지정할 수 없습니다.
 - provider 메시지 원문·키·전사문은 브라우저로 전달하거나 로그에 기록하지 않습니다. 알려진 오류 코드를 한국어로 안내합니다.
 - 앱은 음성 파일/전사문을 저장하지 않습니다. 연결 확인용 쿠키와 토큰은 짧은 수명의 메모리/쿠키이며 오디오를 포함하지 않습니다. OpenAI의 자체 처리·보관 조건은 별도로 적용됩니다.
 - 사용자 입력 텍스트나 대화 전사문은 현재 UI에 표시하지 않으며, 음성만 전달합니다.
+- 생활표는 활성 여부·시간대·슬롯 번호만 브라우저 localStorage에 저장합니다. 활성 설정만 Railway에 보내며, OpenAI에는 선택된 화두의 생활 항목과 현재 30분만 전달합니다. 이용 종료와 생활표 삭제는 별개입니다. [저장·빈도·삭제 상세](life_guide.md)를 참고하세요.
 
 ## 오류 안내
 
@@ -50,9 +51,9 @@
 
 ## 테스트 및 실제 접속 확인 상태
 
-- npm run test:server: 서버·실제 WebSocket 중계 프로토콜 테스트 **24개 통과**.
-- npm run test:realtime: 가상 마이크 + 실제 브라우저 Web Audio + Node 중계 + 모의 OpenAI 서버로 **62개 통과**.
-- 합계 86개. 키 비노출, 동의·Origin·권한·재사용 방지, PCM 보존, 취소 후 늦은 음성 필터, 한도·시간 종료·오류 정리, 재접속 경합을 검증했습니다.
+- 2026-11-08 npm run test:server: 서버·생활표·실제 WebSocket 중계 프로토콜 테스트 **34개 통과**.
+- npm run test:realtime: 가상 마이크 + 실제 브라우저 Web Audio + Node 중계 + 모의 OpenAI 서버로 **72개 통과**(데스크톱/모바일 Chromium 설정, 순수 함수 검사 포함).
+- 합계 106개. 키 비노출, 동의·Origin·권한·재사용 방지, PCM 보존, 취소 후 늦은 음성 필터, 한도·시간 종료·오류 정리, 재접속 경합에 더해 생활표 저장/삭제·시간대·제안 빈도·활성 수정·끼어들기 응답 순서를 검증했습니다.
 - 테스트 fixture는 별도 스크립트이고 프로덕션 Docker에 복사하지 않습니다. 테스트에서는 실제 OpenAI API를 호출하지 않습니다.
 - 이 작업 환경에는 사용자가 Railway에 저장한 실제 키가 없고 공개 도메인 HTTPS 요청도 프록시의 403으로 차단됩니다. 실제 OpenAI 계정의 응답 성공·잔액·모델 권한 및 최신 Railway 배포는 재배포 후 사용자 환경에서 확인해야 합니다.
 

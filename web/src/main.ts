@@ -2,6 +2,7 @@ import './style.css';
 import { mountIcons } from './icons';
 import { RealtimeConversation, realtimeErrors, type ConversationState } from './realtime-client';
 import { AudioEngine } from './audio-engine';
+import { mountLifeGuide } from './life-guide';
 import { demoRecording, waveform, wipe, type RecordingData } from './audio-utils';
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 const engine = new AudioEngine();
@@ -124,13 +125,14 @@ const conversation = new RealtimeConversation({
   error(code) { const message=realtimeErrors[code] || realtimeErrors.UPSTREAM_UNAVAILABLE; $('realtime-message').textContent=message; $('realtime-status').textContent='연결 확인 필요'; toast(message,true); },
   level(peak) { $('conversation-orb').style.setProperty('--voice-scale',String(1+Math.min(.2,peak*.3))); },
 });
+const lifeGuide = mountLifeGuide(guide => conversation.updateLifeGuide(guide));
 $('realtime-connect').addEventListener('click', () => {
   if(!requireAudioConsent()) return;
   if(!$<HTMLInputElement>('realtime-consent').checked) { $<HTMLInputElement>('realtime-consent').focus(); toast('실시간 음성 전송 안내에 동의해 주세요.'); return; }
   const code=$<HTMLInputElement>('realtime-access-code').value;
   if(requiresAccessCode && !code) { $<HTMLInputElement>('realtime-access-code').focus(); toast('이용 코드를 입력해 주세요.'); return; }
   resetAudio();
-  void conversation.start($<HTMLSelectElement>('input-device').value,$<HTMLSelectElement>('output-device').value,volume,code);
+  void conversation.start($<HTMLSelectElement>('input-device').value,$<HTMLSelectElement>('output-device').value,volume,code,lifeGuide.current());
   $<HTMLInputElement>('realtime-access-code').value='';
 });
 $('realtime-end').addEventListener('click', () => conversation.stop());
@@ -261,13 +263,15 @@ $<HTMLSelectElement>('output-device').disabled = !engine.canSelectOutput;
 if (!engine.canSelectOutput) $('output-note').textContent = '이 브라우저에서는 시스템 기본 스피커를 사용해요. 기기의 오디오 설정에서 바꿔 주세요.';
 function route() {
   const name = location.hash.slice(1) || 'overview';
-  const known = name === 'audio' ? 'audio' : 'overview';
+  const known = name === 'life-guide' ? 'life-guide' : name === 'audio' ? 'audio' : 'overview';
   if (name !== known) history.replaceState(null, '', `${location.pathname}${location.search}#overview`);
   document.querySelectorAll<HTMLElement>('[data-route]').forEach(link => {
     const active = link.dataset.route === known; link.classList.toggle('active', active);
     if (active) link.setAttribute('aria-current', 'page'); else link.removeAttribute('aria-current');
   });
-  $('page-name').textContent = known === 'audio' ? '오디오 테스트' : '대시보드';
+  $('overview-view').hidden = known === 'life-guide';
+  $('life-guide-view').hidden = known !== 'life-guide';
+  $('page-name').textContent = known === 'life-guide' ? '라이프 가이드' : known === 'audio' ? '오디오 테스트' : '대시보드';
   if (known === 'audio') $('audio-lab').scrollIntoView({ block: 'center' }); else window.scrollTo(0, 0);
 }
 window.addEventListener('hashchange', route);

@@ -4,6 +4,7 @@ COPY web/package.json web/package-lock.json ./
 RUN npm ci
 COPY web/index.html web/tsconfig.json web/vite.config.ts ./
 COPY web/src ./src
+COPY web/shared ./shared
 COPY web/public ./public
 RUN npm run build
 RUN npm prune --omit=dev --no-audit --no-fund
@@ -14,6 +15,7 @@ WORKDIR /app
 COPY --from=build --chown=node:node /app/dist ./dist
 COPY --from=build --chown=node:node /app/node_modules ./node_modules
 COPY --chown=node:node web/scripts/serve.mjs web/scripts/realtime-gateway.mjs ./scripts/
+COPY --chown=node:node web/shared ./shared
 COPY --chown=node:node web/package.json ./package.json
 USER node
 EXPOSE 3000

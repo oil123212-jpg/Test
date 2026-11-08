@@ -1,6 +1,8 @@
 import { randomBytes, timingSafeEqual } from 'node:crypto';
 import { WebSocket, WebSocketServer } from 'ws';
+import { emptyLifeGuide, parseLifeGuide, LifeGuidePlanner } from '../shared/life-guide.mjs';
 export const REALTIME_POLICY = 'realtime-adult-test-v1';
+const BASE_INSTRUCTIONS = '너의 이름은 모모야. 성인 개발자와 음성 연결을 시험하고 있어. 한국어로 친절하고 짧게 대화해. 개인정보를 요구하지 말고, 너는 AI임을 숨기지 마. 의료·위험한 행동에 대한 단정적인 조언을 하지 마. 생활 화두는 이번 응답의 지침에서 허용한 경우에만 먼저 꺼내. 사용자가 직접 물어본 생활 주제에는 자연스럽게 답해.';
 const MAX_FRAME = 16384;
 function safeEqual(a, b) {
   const x = Buffer.from(String(a || '')), y = Buffer.from(String(b || ''));
@@ -77,6 +79,9 @@ export function attachRealtime(server, options = {}) {
         json(res, 403, { code:'CONSENT_REQUIRED' }); return true;
       }
       if (accessCode && !safeEqual(body.accessCode, accessCode)) { json(res, 403, { code:'ACCESS_DENIED' }); return true; }
+      let lifeGuide;
+      try { lifeGuide = body.lifeGuide === undefined ? emptyLifeGuide() : parseLifeGuide(body.lifeGuide); }
+      catch { json(res,400,{code:'INVALID_LIFE_GUIDE'}); return true; }
       starts = starts.filter(time => time > Date.now() - 3600000);
       if (tickets.size >= 128 || active.size >= maxSessions || starts.length >= hourlyLimit) {
         json(res, 429, { code:'SESSION_LIMIT' }); return true;
@@ -85,7 +90,7 @@ export function attachRealtime(server, options = {}) {
       // One pending ticket per browser; tickets are one-use and expire quickly.
       for (const [key, value] of tickets) if (value.owner === owner) tickets.delete(key);
       const token = randomBytes(32).toString('hex');
-      tickets.set(token, { owner, expires: Date.now() + 20000 });
+      tickets.set(token, { owner, lifeGuide, expires: Date.now() + 20000 });
       const secure = req.headers.origin?.startsWith('https:') ? '; Secure' : '';
       res.setHeader('Set-Cookie', `momo_rt=${owner}; HttpOnly; SameSite=Strict; Path=/api/realtime; Max-Age=${maxSeconds + 60}${secure}`);
       json(res, 200, { token, maxSeconds });
@@ -102,6 +107,9 @@ export function attachRealtime(server, options = {}) {
   server.on('upgrade', onUpgrade);
   function connect(client, req) {
     let upstream, ready = false, finished = false, responseId = null, inputBytes = 0, outputBytes = 0;
+    let planner, responseInFlight = false, cancelRequested = false, pendingTurn = false;
+    let guideUpdates = [];
+    const committed = new Set();
     const cancelled = new Set();
     let handshakeTimer, lifetimeTimer;
     const send = value => { if (client.readyState === WebSocket.OPEN) client.send(JSON.stringify(value)); };
@@ -117,12 +125,22 @@ export function attachRealtime(server, options = {}) {
     active.set(client, { owner:cookie(req), finish });
     function upstreamSend(value) { if (upstream?.readyState === WebSocket.OPEN) upstream.send(JSON.stringify(value)); }
     function cancelResponse() {
-      if (responseId) {
+      if (responseInFlight) cancelRequested = true;
+      if (responseId && !cancelled.has(responseId)) {
         cancelled.add(responseId);
         upstreamSend({ type:'response.cancel', response_id:responseId });
         if (cancelled.size > 32) cancelled.delete(cancelled.values().next().value);
       }
       send({ type:'response.cancelled' });
+    }
+    function respond() {
+      if (!pendingTurn || responseInFlight || !ready || finished) return;
+      pendingTurn = false; responseInFlight = true; cancelRequested = false;
+      const cue = planner.nextCue(options.now?.() ?? new Date());
+      const instruction = cue
+        ? `이번 답변에서 부모님이 선택한 생활 항목은 「${cue.label}」, 시간대는 ${cue.time}. 사용자의 말에 먼저 답하고 흐름이 어울리면 이 항목을 짧은 한국어 질문 하나로 부드럽게 연결해. 명령하거나 재촉하거나 죄책감을 주지 마. 이미 했거나 원하지 않는다고 하면 존중해. 설정이나 알림, 확률을 언급하지 마. 맞지 않는 흐름이면 생략해도 돼.`
+        : '이번 답변에서는 생활 습관이나 일정 화두를 먼저 꺼내지 말고 사용자의 말에 집중해. 사용자가 직접 물은 생활 주제에는 답해도 돼.';
+      upstreamSend({type:'response.create',response:{instructions:BASE_INSTRUCTIONS + '\n' + instruction}});
     }
     client.on('message', (data, binary) => {
       if (finished) return;
@@ -134,6 +152,7 @@ export function attachRealtime(server, options = {}) {
         const grant = tickets.get(auth.token);
         if (auth.type !== 'start' || !grant || grant.owner !== cookie(req) || grant.expires < Date.now()) { finish('AUTH_REQUIRED'); return; }
         tickets.delete(auth.token);
+        planner = new LifeGuidePlanner(grant.lifeGuide, options.random ?? Math.random);
         active.get(client).token = auth.token;
         if (active.size > maxSessions || starts.length >= hourlyLimit) { finish('SESSION_LIMIT'); return; }
         starts.push(Date.now());
@@ -143,9 +162,9 @@ export function attachRealtime(server, options = {}) {
         });
         upstream.on('open', () => upstreamSend({ type:'session.update', session: {
           type:'realtime', output_modalities:['audio'], max_output_tokens:512,
-          instructions:'너의 이름은 모모야. 성인 개발자와 음성 연결을 시험하고 있어. 한국어로 친절하고 짧게 대화해. 개인정보를 요구하지 말고, 너는 AI임을 숨기지 마. 의료·위험한 행동에 대한 단정적인 조언을 하지 마.',
+          instructions:BASE_INSTRUCTIONS,
           audio: {
-            input: { format:{type:'audio/pcm',rate:24000}, turn_detection:{type:'server_vad',threshold:0.5,prefix_padding_ms:300,silence_duration_ms:650,create_response:true,interrupt_response:true} },
+            input: { format:{type:'audio/pcm',rate:24000}, turn_detection:{type:'server_vad',threshold:0.5,prefix_padding_ms:300,silence_duration_ms:650,create_response:false,interrupt_response:true} },
             output: { format:{type:'audio/pcm',rate:24000}, voice },
           },
         }}));
@@ -156,10 +175,19 @@ export function attachRealtime(server, options = {}) {
           if (event.type === 'session.updated' && !ready) {
             ready = true; clearTimeout(handshakeTimer); send({type:'ready',maxSeconds});
           } else if (event.type === 'input_audio_buffer.speech_started') {
-            if (responseId) cancelled.add(responseId);
+            if (responseInFlight) cancelResponse();
             send({type:'speech.started'});
           } else if (event.type === 'input_audio_buffer.speech_stopped') send({type:'speech.stopped'});
-          else if (event.type === 'response.created') { responseId = event.response?.id; send({type:'response.started'}); }
+          else if (event.type === 'input_audio_buffer.committed' && ready && typeof event.item_id === 'string' && !committed.has(event.item_id)) {
+            committed.add(event.item_id); if (committed.size > 128) committed.delete(committed.values().next().value);
+            pendingTurn = true;
+            if (responseInFlight) cancelResponse();
+            respond();
+          }
+          else if (event.type === 'response.created') {
+            responseId = event.response?.id; responseInFlight = true;
+            if (cancelRequested) cancelResponse(); else send({type:'response.started'});
+          }
           else if (event.type === 'response.output_audio.delta' && !cancelled.has(event.response_id)) {
             if (typeof event.delta !== 'string') { finish('UPSTREAM_PROTOCOL'); return; }
             const pcm = Buffer.from(event.delta, 'base64'); outputBytes += pcm.length;
@@ -167,9 +195,11 @@ export function attachRealtime(server, options = {}) {
             if (client.readyState === WebSocket.OPEN) client.send(pcm, {binary:true}, () => pcm.fill(0));
             else pcm.fill(0);
           } else if (event.type === 'response.done') {
-            if (cancelled.has(event.response?.id)) return;
+            if (event.response?.id !== responseId) return;
+            responseId = null; responseInFlight = false; cancelRequested = false;
+            if (cancelled.has(event.response?.id)) { respond(); return; }
             if (!['completed','cancelled'].includes(event.response?.status)) { finish('RESPONSE_FAILED'); return; }
-            responseId = null; send({type:'response.done'});
+            send({type:'response.done'}); respond();
           } else if (event.type === 'error') {
             const code = event.error?.code;
             // Never forward provider messages, prompts, tokens or transcripts.
@@ -194,9 +224,15 @@ export function attachRealtime(server, options = {}) {
       } else {
         let event; try { event = JSON.parse(data.toString()); } catch { finish('INVALID_REQUEST'); return; }
         if (!event || typeof event !== 'object') { finish('INVALID_REQUEST'); return; }
-        if (event.type === 'cancel') cancelResponse();
+        if (event.type === 'cancel') { pendingTurn = false; cancelResponse(); }
         else if (event.type === 'end') finish();
         else if (event.type === 'clear') upstreamSend({type:'input_audio_buffer.clear'});
+        else if (event.type === 'life_guide.update') {
+          guideUpdates = guideUpdates.filter(time => time > Date.now() - 60000);
+          if (guideUpdates.length >= 30) { finish('INVALID_REQUEST'); return; }
+          guideUpdates.push(Date.now());
+          try { planner.update(event.lifeGuide); } catch { finish('INVALID_LIFE_GUIDE'); }
+        }
         else finish('INVALID_REQUEST');
       }
     });

@@ -14,13 +14,17 @@ provider.on('connection',socket=>{
       if(pcm.some(byte=>byte!==0)) frames+=pcm.length/2;
       pcm.fill(0);
       if(frames>=24000) {
-        frames=0; const id='mock-'+(++sequence);
-        for(const value of [{type:'input_audio_buffer.speech_started'},{type:'input_audio_buffer.speech_stopped'},{type:'response.created',response:{id}}]) socket.send(JSON.stringify(value));
+        frames=0;
+        for(const value of [{type:'input_audio_buffer.speech_started'},{type:'input_audio_buffer.speech_stopped'},{type:'input_audio_buffer.committed',item_id:'input-'+(++sequence)}]) socket.send(JSON.stringify(value));
+      }
+    }
+    if(event.type==='response.create') {
+        const id='mock-'+sequence;
+        socket.send(JSON.stringify({type:'response.created',response:{id}}));
         const audio=Buffer.alloc(9600);
         for(let i=0;i<4800;i++) audio.writeInt16LE(Math.round(Math.sin(2*Math.PI*440*i/24000)*15000),i*2);
         socket.send(JSON.stringify({type:'response.output_audio.delta',response_id:id,delta:audio.toString('base64')}));audio.fill(0);
         const timer=setTimeout(()=>{timers.delete(timer);if(socket.readyState===1)socket.send(JSON.stringify({type:'response.done',response:{id,status:'completed'}}));},250);timers.add(timer);
-      }
     }
     if(event.type==='response.cancel') socket.send(JSON.stringify({type:'response.done',response:{id:event.response_id,status:'cancelled'}}));
   });

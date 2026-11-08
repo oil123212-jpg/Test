@@ -15,6 +15,7 @@
     <nav aria-label="주 메뉴">
       <a href="#overview" class="nav-item active" data-route="overview"><span data-icon="grid"></span>대시보드</a>
       <a href="#audio" class="nav-item" data-route="audio"><span data-icon="wave"></span>오디오 테스트<span class="nav-dot"></span></a>
+      <a href="#life-guide" class="nav-item" data-route="life-guide"><span data-icon="leaf"></span>라이프 가이드</a>
     </nav>
     <div class="sidebar-note"><div class="tiny-leaf" data-icon="leaf"></div><strong>작은 시작, 안전한 연결</strong><p>아이를 위한 기술은<br>안전한 기본값에서 시작해요.</p></div>
     <button class="help-button" id="open-help"><span data-icon="help"></span>사용 가이드<span data-icon="arrow-up-right"></span></button>
@@ -37,6 +38,7 @@
           <div id="realtime-access-field" hidden><label class="field-label" for="realtime-access-code">이용 코드</label><input id="realtime-access-code" type="password" autocomplete="off" maxlength="128" placeholder="안내받은 이용 코드" /></div>
           <div class="conversation-actions"><button id="realtime-connect" class="primary-button" disabled><span data-icon="mic"></span>대화 시작</button><button id="realtime-mute" class="secondary-button" disabled aria-pressed="false">마이크 끄기</button><button id="realtime-interrupt" class="secondary-button" disabled><span data-icon="stop"></span>응답 중단</button><button id="realtime-end" class="text-button" disabled>대화 종료</button></div>
           <p class="privacy-footnote"><span data-icon="lock"></span>이 사이트는 음성 파일을 저장하지 않습니다. OpenAI의 데이터 처리·보관 조건은 별도로 적용됩니다.</p>
+          <p id="life-guide-conversation-status" class="small-note">라이프 가이드 꺼짐 · 부모님 페이지에서 생활 시간을 설정할 수 있어요.</p>
         </section>
         <div class="section-heading"><h2>연결을 준비해요</h2><span><span class="status-dot"></span>로컬 테스트 음성은 브라우저 안에서만</span></div>
         <div class="lab-grid local-lab-grid">
@@ -51,6 +53,15 @@
         </div>
         <p class="page-footer"><span class="mini-brand" data-icon="leaf"></span>모든 작은 목소리가 존중받는 세상을 꿈꿔요.<span>모모 · 작은 목소리의 친구</span></p>
       </section>
+      <section id="life-guide-view" class="view" hidden aria-labelledby="life-guide-title">
+        <div class="page-heading"><div><p class="eyebrow">OUR DAILY RHYTHM</p><h1 id="life-guide-title">라이프 가이드<span class="heading-spark" aria-hidden="true">✳</span></h1><p class="page-subtitle">부모님이 정하는 생활 리듬, 모모가 건네는 다정한 한마디.</p></div></div>
+        <div class="life-guide-intro card"><strong>알림 대신, 대화 속에서 가볍게</strong><p>매일 반복할 시간을 30분 단위로 여러 개 선택해 주세요. 해당 시간대에 대화하면 약 3번 중 1번 자연스럽게 이야기를 꺼내요. 같은 항목은 한 대화의 같은 30분 안에서 한 번만 제안해요.</p><p>예: “오늘은 어떤 반찬이 먹고 싶어?” · “자기 전에 어떤 이야기를 들으면 좋을까?” · “장난감은 어디에 쉬게 해 줄까?”</p><p class="small-note">시간이 되어도 자동으로 말을 걸거나 알림을 보내지 않아요. 부모님용 설정 화면이며 별도 계정 인증 기능은 없어요.</p></div>
+        <form id="life-guide-form">
+          <div class="life-guide-options card"><label class="life-guide-toggle"><input id="life-guide-enabled" type="checkbox" /><span><strong>생활 이야기를 모모에게 연결하기</strong><small>대화 시 설정을 Railway 서버에 보내고, 현재 시간대에 선택된 생활 항목과 시간을 OpenAI에 전달하는 데 동의해요.</small></span></label><label class="field-label" for="life-guide-timezone">생활 시간 기준</label><select id="life-guide-timezone"></select><p class="small-note">기기 시간이 바뀌어도 이 시간대를 기준으로 해요. 선택하지 않은 시간에는 생활 화두를 먼저 꺼내지 않아요.</p></div>
+          <div id="life-guide-categories" class="life-guide-grid"></div>
+          <div class="life-guide-save card"><p id="life-guide-save-status" role="status" aria-live="polite">아직 저장한 생활 시간이 없어요.</p><div class="life-guide-actions"><button id="life-guide-save" type="submit" class="primary-button">저장하고 적용</button><button id="life-guide-delete" type="button" class="secondary-button">저장한 생활 시간 삭제</button><a href="#overview" class="text-button">모모와 대화하기 →</a></div><p class="small-note">설정은 이 브라우저에 저장돼요. 이용 종료 후에도 유지되며 다른 기기와 동기화되지 않아요. 삭제하면 브라우저 설정과 현재 대화에 전달할 생활 시간을 비워요. 음성이나 대화 내용은 저장하지 않아요.</p></div>
+        </form>
+      </section>
     </main>
   </div>
   <dialog id="consent-dialog" aria-labelledby="consent-title" aria-describedby="consent-description">
@@ -61,6 +72,7 @@
         <h3>어떤 정보를 처리하나요?</h3><p>선택한 마이크의 음성과 장치 정보를 오디오 점검에 사용해요. 실시간 대화를 선택하면 음성을 AI 응답 생성에 사용합니다. 이 사이트는 전사문을 표시하거나 저장하지 않아요.</p>
         <h3>어디에, 얼마나 보관하나요?</h3><p>음성은 현재 탭의 메모리에만 임시 보관해요. 삭제, 이용 종료, 탭 비활성화 또는 페이지 종료 시 정리하며 파일이나 브라우저 저장소에 저장하지 않아요.</p>
         <h3>외부로 보내나요?</h3><p>로컬 오디오 테스트는 외부로 보내지 않아요. 실시간 대화는 별도 동의 후 Railway 서버와 OpenAI로 음성을 전송합니다. 제공자 데이터 처리 조건과 호스팅 접속 기록 정책은 별도로 적용됩니다.</p>
+        <h3>생활 시간 설정은요?</h3><p>부모님이 저장한 라이프 가이드 설정은 이 브라우저에 유지돼요. 연결하기를 켜면 대화 중 Railway 서버가 설정을 처리하고 현재 시간대의 생활 항목과 시간을 OpenAI에 전달해요. 라이프 가이드에서 끄거나 저장한 생활 시간을 삭제할 수 있어요.</p>
         <h3>동의하지 않으면 어떻게 되나요?</h3><p>실제 마이크 테스트와 실시간 대화는 사용할 수 없지만 합성 음원 데모는 이용할 수 있어요. 이용 종료를 누르면 동의를 철회하고 임시 음성을 지울 수 있어요.</p>
       </div>
       <label class="consent-checkbox"><input id="consent-checkbox" type="checkbox" required /><span><strong>[필수] 위 개인정보 처리 안내를 확인하고 로컬 오디오 테스트에 동의합니다.</strong></span></label>
