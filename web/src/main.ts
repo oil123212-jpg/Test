@@ -1,4 +1,5 @@
 import './style.css';
+import './mobile.css';
 import { mountIcons } from './icons';
 import { RealtimeConversation, realtimeErrors, type ConversationState } from './realtime-client';
 import { AudioEngine } from './audio-engine';

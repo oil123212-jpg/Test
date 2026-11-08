@@ -1,0 +1,149 @@
+/* Mobile proportions: 4/8px spacing, readable type, and 44px controls.
+   References: Material Web button styles and Shopify Polaris spacing/type tokens. */
+@media (max-width: 900px) {
+  body { font-size: 14px; line-height: 1.6; word-break: keep-all; overflow-wrap: break-word; }
+  .sidebar {
+    position: static; width: 100%; height: 64px;
+    padding: 10px max(16px, calc((100% - 608px) / 2));
+    flex-direction: row; align-items: center; justify-content: space-between;
+    border-right: 0; border-bottom: 1px solid var(--line);
+  }
+  .brand { padding: 0; gap: 8px; font-size: 21px; }
+  .brand > span:last-child { display: block; }
+  .brand-icon { width: 36px; height: 36px; border-radius: 11px; }
+  .brand-icon svg { width: 23px; height: 23px; }
+  .brand-caption, .nav-label, .sidebar-note, .help-button, .sidebar-footer { display: none; }
+  .sidebar nav { display: flex; gap: 4px; margin: 0; }
+  .nav-item { width: 44px; height: 44px; margin: 0; padding: 10px; font-size: 0; gap: 0; }
+  .nav-item svg { width: 20px; height: 20px; }
+  .app-shell { margin-left: 0; }
+  .topbar {
+    height: 56px; padding: 6px max(16px, calc((100% - 608px) / 2)); gap: 8px;
+  }
+  .breadcrumb { gap: 8px; font-size: 12px; min-width: 0; }
+  .breadcrumb strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .topbar-actions { gap: 8px; flex-shrink: 0; }
+  .local-badge { display: none; }
+  .icon-button { width: 44px; height: 44px; flex-shrink: 0; }
+  .icon-button svg { width: 20px; height: 20px; }
+  .login-button { min-height: 44px; padding: 10px 12px; font-size: 13px; }
+  main { width: 100%; max-width: 640px; padding: 24px 16px max(24px, env(safe-area-inset-bottom)); }
+  .view, .card, .card-title, .card-title > div { min-width: 0; }
+  .page-heading { margin-bottom: 20px; }
+  .eyebrow { font-size: 10px; letter-spacing: 1.5px; margin-bottom: 8px; }
+  h1 { font-size: 24px; line-height: 1.4; gap: 8px; letter-spacing: -.8px; }
+  .heading-spark { font-size: 26px; }
+  .page-subtitle { max-width: none; margin-top: 8px; font-size: 13px; line-height: 1.6; }
+  .primary-button, .secondary-button, .text-button, .subtle-button {
+    min-height: 44px; font-size: 14px; line-height: 1.4; padding: 10px 12px;
+  }
+  .primary-button svg, .secondary-button svg { width: 16px; height: 16px; }
+  .hero { grid-template-columns: minmax(0, 1fr) 32%; min-height: 0; border-radius: 12px; }
+  .hero-copy { min-width: 0; padding: 20px 8px 20px 20px; }
+  .hero-label { font-size: 10px; padding: 4px 6px; gap: 4px; }
+  .hero-label svg { width: 12px; height: 12px; }
+  .hero h2 { font-size: clamp(22px, 5.8vw, 28px); line-height: 1.4; letter-spacing: -1px; white-space: normal; margin: 16px 0 12px; }
+  .hero p { width: auto; font-size: 13px; line-height: 1.65; margin-bottom: 16px; }
+  .hero .primary-button { min-height: 44px; font-size: 13px; padding: 10px 12px; gap: 8px; }
+  .hero-art { align-self: stretch; min-width: 0; }
+  .hero-art::before { width: 120px; height: 120px; top: 50%; transform: translate(-50%, -50%); }
+  .momo-character { width: 100%; height: auto; max-height: 180px; margin: 24px 0 0; }
+  .art-orbit { width: 115px; height: 140px; top: calc(50% - 65px); }
+  .orbit-two { width: 140px; height: 115px; top: calc(50% - 52px); }
+  .hero-art .floating-label { top: calc(50% - 90px); left: 50%; transform: translateX(-50%) rotate(-5deg); font-size: 8px; padding: 5px; white-space: nowrap; }
+  .hero-art .spark-one { left: 0; top: calc(50% - 45px); font-size: 18px; }
+  .hero-art .spark-two { right: 8px; top: calc(50% - 72px); font-size: 20px; }
+  .art-dot.dot-one { left: 12%; bottom: 30%; width: 4px; height: 4px; }
+  .art-dot.dot-two { right: 18%; bottom: 35%; }
+  .character-caption { bottom: 20px; width: 100%; padding: 0 6px; font-size: 8px; line-height: 1.5; text-align: center; white-space: normal; }
+  .card { border-radius: 12px; }
+  .audio-card, .conversation-card { padding: 16px; }
+  .conversation-card { margin-top: 20px; }
+  .card-heading { align-items: flex-start; gap: 8px; margin-bottom: 16px; }
+  .card-title { gap: 8px; flex: 1; align-items: flex-start; }
+  .card-icon { width: 32px; height: 32px; border-radius: 8px; }
+  .card-title h3, .conversation-card .card-title h2 { font-size: 16px; line-height: 1.4; }
+  .card-title p { font-size: 12px; line-height: 1.5; margin-top: 4px; }
+  .state-badge { font-size: 11px; padding: 4px 7px; flex-shrink: 0; }
+  .conversation-stage { padding: 20px 12px; margin-bottom: 16px; }
+  .conversation-orb { width: 64px; height: 64px; margin-bottom: 16px; }
+  .conversation-stage > p:first-of-type { font-size: 14px; line-height: 1.6; }
+  .conversation-hint { font-size: 12px; line-height: 1.6; margin-top: 8px; }
+  .realtime-consent { font-size: 13px; line-height: 1.65; gap: 10px; }
+  .realtime-consent input { width: 18px; height: 18px; }
+  .conversation-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 16px; }
+  .conversation-actions button { width: 100%; min-height: 44px; margin: 0; padding: 10px 8px; font-size: 13px; }
+  .privacy-footnote { align-items: flex-start; font-size: 12px; line-height: 1.6; gap: 6px; }
+  .privacy-footnote svg { width: 12px; height: 12px; margin-top: 3px; }
+  .small-note { font-size: 13px; line-height: 1.65; }
+  .section-heading { align-items: flex-start; flex-wrap: wrap; gap: 6px; margin: 24px 0 12px; }
+  .section-heading h2 { font-size: 16px; }
+  .section-heading > span { font-size: 11px; line-height: 1.5; }
+  .lab-grid { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  .mode-switch { margin-bottom: 16px; }
+  .mode-switch button { min-height: 44px; padding: 8px; font-size: 14px; }
+  .mode-switch svg { width: 16px; height: 16px; }
+  .device-row { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; margin-bottom: 16px; font-size: 13px; }
+  .device-control { display: grid; width: 100%; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+  .device-control select { width: 100%; min-height: 44px; max-width: none; font-size: 16px; padding: 8px 4px; }
+  .subtle-button { font-size: 12px; padding: 8px; }
+  .waveform-panel { padding: 12px; }
+  .waveform-meta { align-items: flex-start; font-size: 11px; line-height: 1.5; }
+  #recording-clock { font-size: 12px; white-space: nowrap; }
+  #recording-clock span { font-size: 11px; }
+  .waveform-bottom { align-items: flex-start; flex-wrap: wrap; font-size: 11px; line-height: 1.5; }
+  #format-label { font-size: 10px; letter-spacing: 0; }
+  #format-label span { margin-inline: 2px; }
+  canvas { height: 80px; }
+  .audio-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 16px; }
+  .audio-actions #record { grid-column: 1 / -1; }
+  .audio-actions button, .audio-actions .primary-button, .audio-actions .secondary-button { width: 100%; min-height: 44px; font-size: 13px; margin: 0; padding: 10px 8px; }
+  .local-recording-meta { font-size: 12px; gap: 8px; }
+  .page-footer { flex-wrap: wrap; gap: 6px; font-size: 10px; line-height: 1.6; margin-top: 24px; }
+  .page-footer > span:last-child { flex-basis: 100%; max-width: none; margin-left: 18px; text-align: left; font-size: 10px; }
+  dialog, #consent-dialog { width: min(540px, calc(100% - 32px)); max-height: calc(100dvh - 32px); padding: 20px; overflow-y: auto; }
+  .dialog-heading { gap: 8px; margin-bottom: 16px; }
+  .dialog-heading h2 { font-size: 20px; line-height: 1.4; }
+  .field-label { font-size: 14px; margin: 16px 0 8px; }
+  dialog select, #realtime-access-code, .life-guide-time, #life-guide-timezone { min-height: 48px; max-width: 100%; font-size: 16px; padding: 10px 12px; }
+  .session-reset { font-size: 14px; }
+  .consent-description { font-size: 14px; line-height: 1.65; }
+  .consent-details { padding: 16px; margin-top: 16px; }
+  .consent-details h3 { font-size: 14px; margin-top: 16px; }
+  .consent-details p, .consent-checkbox strong { font-size: 13px; line-height: 1.65; }
+  .consent-actions { display: grid; grid-template-columns: 1fr 1.5fr; gap: 8px; margin-top: 16px; }
+  .consent-actions button { font-size: 13px; min-height: 44px; padding: 10px 8px; }
+  .help-steps li { font-size: 14px; }
+  .help-steps p { font-size: 13px; line-height: 1.65; }
+  .life-guide-intro, .life-guide-options, .life-guide-save, .life-guide-category { padding: 16px; }
+  .life-guide-intro { margin-bottom: 16px; }
+  .life-guide-intro > strong { font-size: 16px; line-height: 1.5; }
+  .life-guide-intro p { font-size: 13px; line-height: 1.65; margin-top: 8px; }
+  .life-guide-options { margin-bottom: 16px; }
+  .life-guide-toggle { min-height: 44px; align-items: center; gap: 10px; margin: 0 0 12px; }
+  .life-guide-toggle input { margin: 0; }
+  .life-guide-grid { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  .life-guide-category legend { font-size: 16px; }
+  .life-guide-selection { min-height: 0; font-size: 12px; margin: 0 0 12px; }
+  .life-guide-category .field-label { font-size: 13px; margin: 0 0 8px; }
+  .life-guide-selected { margin-top: 12px; }
+  .life-guide-selected:empty { display: none; }
+  .life-guide-selected li { font-size: 13px; }
+  .life-guide-selected button { min-width: 44px; }
+  .life-guide-category > .text-button { min-height: 44px; margin-top: 8px; font-size: 12px; padding: 8px 0; }
+  .life-guide-save { margin-top: 20px; }
+  .life-guide-save > p:first-child { margin: 0 0 16px; font-size: 13px; line-height: 1.65; }
+  .life-guide-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .life-guide-actions #life-guide-login, .life-guide-actions a { grid-column: 1 / -1; }
+  .life-guide-actions button, .life-guide-actions a { width: 100%; margin: 0; min-height: 44px; padding: 10px 8px; font-size: 13px; text-align: center; }
+  #toast { left: 50%; bottom: max(16px, env(safe-area-inset-bottom)); width: max-content; max-width: min(560px, calc(100% - 32px)); padding: 12px 16px; font-size: 13px; line-height: 1.6; }
+}
+@media (max-width: 359px) {
+  .breadcrumb { font-size: 11px; gap: 6px; }
+  .topbar-actions { gap: 4px; }
+  .login-button { padding-inline: 8px; }
+  .hero { grid-template-columns: minmax(0, 1fr) 28%; }
+  .hero-copy { padding-left: 16px; }
+  .hero-art .floating-label { font-size: 7px; }
+  .consent-actions, .life-guide-actions { grid-template-columns: minmax(0, 1fr); }
+}
