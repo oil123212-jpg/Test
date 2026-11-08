@@ -81,7 +81,7 @@ export function mountLifeGuide(onChange: (guide: LifeGuide) => void, requestLogi
     element('life-guide-login').hidden = loggedIn;
   }
   function updateConversationStatus() {
-    element('life-guide-conversation-status').textContent = guide.enabled ? `라이프 가이드 켜짐 · ${guide.timeZone} 기준, 해당 시간대에 가끔 생활 이야기를 건네요.` : '라이프 가이드 꺼짐 · 부모님 페이지에서 생활 시간을 설정할 수 있어요.';
+    element('life-guide-conversation-status').textContent = guide.enabled ? `라이프가이드 연결 켜짐 · ${guide.timeZone} 기준, 해당 시간대에 가끔 생활 이야기를 건네요.` : '라이프가이드 연결 꺼짐 · 부모님 페이지에서 생활 시간을 설정할 수 있어요.';
   }
   function dirty() { draftDirty = true; summaries(); status.textContent = '변경한 내용이 있어요. 저장하고 적용을 눌러 주세요.'; }
   enabled.addEventListener('change',dirty); zone.addEventListener('change',dirty);
@@ -111,7 +111,7 @@ export function mountLifeGuide(onChange: (guide: LifeGuide) => void, requestLogi
       if (id !== generation) return;
       guide = saved.schedule ? parseLifeGuide({...saved.schedule,enabled:false}) : emptyLifeGuide();
       loggedIn = true; onChange(guide); render();
-      status.textContent = saved.schedule ? 'DB에서 생활 시간을 불러왔어요. 생활 이야기 연결은 직접 켜 주세요.' : '아직 저장한 생활 시간이 없어요. 시간을 선택해 DB에 저장해 주세요.';
+      status.textContent = saved.schedule ? 'DB에서 생활 시간을 불러왔어요. 라이프가이드 연결은 직접 켜 주세요.' : '아직 저장한 생활 시간이 없어요. 시간을 선택해 DB에 저장해 주세요.';
       // Preserve an old local time table as an unsaved draft; never upload silently.
       if (!saved.schedule) {
         try {
@@ -144,7 +144,7 @@ export function mountLifeGuide(onChange: (guide: LifeGuide) => void, requestLogi
     if (!loggedIn) { requestLogin(); return; }
     const next = readDraft();
     if (next.enabled && !Object.values(next.slots).some(values => values.length)) {
-      status.textContent = '생활 이야기를 연결하려면 시간을 하나 이상 선택해 주세요.'; return;
+      status.textContent = '라이프가이드를 연결하려면 시간을 하나 이상 선택해 주세요.'; return;
     }
     const id = generation; busy = true; controls(); status.textContent = 'DB에 저장하고 있어요…';
     try {
@@ -154,7 +154,7 @@ export function mountLifeGuide(onChange: (guide: LifeGuide) => void, requestLogi
       guide = next; onChange(guide); updateConversationStatus(); channel?.postMessage({type:'changed'});
       draftDirty = false;
       try { localStorage.removeItem('momo.life-guide.v1'); } catch {}
-      status.textContent = next.enabled ? 'DB에 저장했어요. 다음 답변부터 새 설정을 사용해요.' : 'DB에 저장했어요. 생활 화두 제안은 꺼져 있어요.';
+      status.textContent = next.enabled ? 'DB에 저장했어요. 다음 답변부터 새 설정을 사용해요.' : 'DB에 저장했어요. 라이프가이드 연결은 꺼져 있어요.';
     } catch(error) { if (id === generation) status.textContent = errorMessage(error) + ' 변경 전 설정을 유지해요.'; }
     finally { if (id === generation) { busy = false; controls(); } }
   });
@@ -164,8 +164,8 @@ export function mountLifeGuide(onChange: (guide: LifeGuide) => void, requestLogi
     // Stop prompting immediately, even if the database is temporarily unavailable.
     guide = emptyLifeGuide(); onChange(guide); render();
     busy = true; controls();
-    try { await api('DELETE'); if(id !== generation) return; try {localStorage.removeItem('momo.life-guide.v1');}catch {} channel?.postMessage({type:'changed'}); status.textContent = 'DB의 생활 시간을 삭제했어요. 생활 화두 제안을 껐어요.'; }
-    catch(error) { if(id === generation) status.textContent = '현재 대화의 생활 화두는 껐지만 DB 삭제는 완료하지 못했어요. ' + errorMessage(error); }
+    try { await api('DELETE'); if(id !== generation) return; try {localStorage.removeItem('momo.life-guide.v1');}catch {} channel?.postMessage({type:'changed'}); status.textContent = 'DB의 생활 시간을 삭제했어요. 라이프가이드 연결을 껐어요.'; }
+    catch(error) { if(id === generation) status.textContent = '현재 대화의 라이프가이드 연결은 껐지만 DB 삭제는 완료하지 못했어요. ' + errorMessage(error); }
     finally { if(id === generation) {busy = false; controls();} }
   });
   if (channel) channel.onmessage = async () => {
