@@ -1,6 +1,7 @@
 import './style.css';
 import './mobile.css';
 import './profile.css';
+import './contrast.css';
 import { mountIcons } from './icons';
 import { RealtimeConversation, realtimeErrors, type ConversationState } from './realtime-client';
 import { AudioEngine } from './audio-engine';
@@ -47,12 +48,12 @@ function updateState(next = state) {
 function draw(levels: number[] = []) {
   const canvas = $<HTMLCanvasElement>('waveform'), ctx = canvas.getContext('2d')!;
   const width = canvas.width, height = canvas.height;
-  ctx.clearRect(0, 0, width, height); ctx.strokeStyle = '#e9eddf'; ctx.lineWidth = 1;
+  ctx.clearRect(0, 0, width, height); ctx.strokeStyle = '#496653'; ctx.lineWidth = 1;
   ctx.beginPath(); ctx.moveTo(0, height / 2); ctx.lineTo(width, height / 2); ctx.stroke();
   const bins = levels.length || 84;
   for (let i = 0; i < bins; i++) {
     const value = levels[i] || 0, bar = Math.max(4, Math.min(1, value * 2) * 130);
-    ctx.fillStyle = value > 0 ? '#9eae85' : '#c7d0b9'; ctx.beginPath();
+    ctx.fillStyle = value > 0 ? '#175135' : '#355e45'; ctx.beginPath();
     ctx.roundRect(i * width / bins + 2, (height - bar) / 2, Math.max(3, width / bins - 5), bar, 3); ctx.fill();
   }
 }

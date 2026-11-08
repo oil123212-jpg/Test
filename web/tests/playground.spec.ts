@@ -35,7 +35,7 @@ test.beforeEach(async ({ page }) => {
 test('dashboard is responsive and requests no microphone on load', async ({ page }, testInfo) => {
   const errors: string[] = []; page.on('pageerror', e => errors.push(e.message));
   await page.goto('./');
-  await expect(page.getByRole('heading', { name: '반가워요, 모모예요' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '반가워요, 모모에요' })).toBeVisible();
   await expect(page.locator('#play')).toBeDisabled();
   expect(await page.evaluate(() => (window as any).__getUserMediaCalls)).toBe(0);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
@@ -131,7 +131,7 @@ test('old privacy and checklist URLs safely return to dashboard', async ({ page 
   for (const hash of ['privacy', 'checklist', 'unknown']) {
     await page.goto(`./#${hash}`);
     await expect(page).toHaveURL(/#overview$/);
-    await expect(page.getByRole('heading', { name: '반가워요, 모모예요' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: '반가워요, 모모에요' })).toBeVisible();
     await page.locator('#try-demo').click(); await expect(page.locator('#play')).toBeEnabled();
   }
   expect(errors).toEqual([]);
