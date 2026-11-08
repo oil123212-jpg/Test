@@ -36,12 +36,12 @@ test('save failure retains applied guide; delete failure disables prompts withou
   await page.locator('[data-route="life-guide"]').click();await page.locator('#life-guide-delete').click();await expect(page.locator('#life-guide-save-status')).toContainText('DB 삭제는 완료하지 못했어요');
   await page.locator('[data-route="overview"]').click();await expect(page.locator('#life-guide-conversation-status')).toContainText('꺼짐');
 });
-test('DB unavailable does not claim successful login or block local audio consent',async({page})=>{
+test('DB unavailable does not claim successful login or block voice consent',async({page})=>{
   await page.route('**/api/life-guide/login',route=>route.fulfill({status:503,json:{code:'DATABASE_NOT_CONFIGURED'}}));
   await page.goto('./#life-guide');await page.locator('#life-guide-login').click();await page.locator('#consent-checkbox').check();await page.locator('#consent-accept').click();
   await expect(page.locator('#life-guide-save-status')).toContainText('DATABASE_URL');await expect(page.locator('#life-meal-time')).toBeEnabled();await expect(page.locator('#login-button')).toHaveText('이용 종료');
   await page.locator('#life-meal-time').selectOption('16');await expect(page.locator('#life-meal-selected')).toContainText('08:00–08:30');
-  await page.locator('[data-route="overview"]').click();await page.locator('#try-demo').click();await expect(page.locator('#play')).toBeEnabled();
+  await page.locator('[data-route="overview"]').click();await page.locator('#realtime-consent').check();await expect(page.locator('#realtime-connect')).toBeEnabled();
 });
 test('different browser contexts keep schedules separate',async({page,browser})=>{
   await page.goto('./#life-guide');await login(page);await page.locator('#life-meal-time').selectOption('16');await page.locator('#life-guide-save').click();await expect(page.locator('#life-guide-save-status')).toContainText('DB에 저장했어요');

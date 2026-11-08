@@ -37,7 +37,7 @@ test('microphone streams through the real relay and response chunks are played',
   const play=await page.evaluate(()=>(window as any).__plays[0]);expect(play).toMatchObject({rate:24000,frames:4800});
   expect(admissions[0]).toMatchObject({consent:true,policy:REALTIME_POLICY});
   expect(admissions[0]).not.toHaveProperty('adultTest');
-  await expect(page.locator('#record')).toBeDisabled();
+  await expect(page.locator('#realtime-connect')).toBeDisabled();
   await page.locator('#realtime-mute').click();await expect(page.locator('#realtime-mute')).toHaveText('마이크 켜기');
   expect(await page.evaluate(()=>(window as any).__tracks.every((t:MediaStreamTrack)=>!t.enabled))).toBe(true);
   await page.locator('#realtime-interrupt').click();
@@ -45,7 +45,7 @@ test('microphone streams through the real relay and response chunks are played',
   await page.locator('#realtime-end').click();
   await expect(page.locator('#realtime-status')).toHaveText('대화 준비');
   await expect.poll(()=>page.evaluate(()=>(window as any).__tracks.every((t:MediaStreamTrack)=>t.readyState==='ended'))).toBe(true);
-  await expect(page.locator('#record')).toBeEnabled();expect(errors).toEqual([]);
+  await expect(page.locator('#realtime-connect')).toBeEnabled();expect(errors).toEqual([]);
 });
 test('withdrawing external consent or ending trial login closes microphone and relay',async({page})=>{
   await page.goto('./');await connect(page);await expect(page.locator('#realtime-status')).toHaveText('듣고 있어요');

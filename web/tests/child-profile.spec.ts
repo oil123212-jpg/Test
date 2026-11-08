@@ -13,6 +13,12 @@ test('profile is first in shared settings and supports 64 keyboard-accessible mu
   await page.goto('./');await page.locator('#open-settings').click();
   await expect(page.getByRole('tab').first()).toHaveText('프로필 설정');await expect(page.locator('#profile-panel')).toBeVisible();await expect(page.locator('#audio-settings-panel')).toBeHidden();
   await expect(page.locator('.interest-button')).toHaveCount(64);await expect(page.locator('#profile-age option')).toHaveCount(5);
+  await expect(page.locator('#profile-interest-options details')).toHaveCount(0);
+  await expect(page.locator('.interest-button:visible')).toHaveCount(64);
+  const last=page.locator('.interest-button').last();const lastId=await last.getAttribute('data-interest');await last.click();
+  await expect(page.locator('.interest-button').first()).toHaveAttribute('data-interest',lastId!);
+  await expect(page.locator('.interest-button').first()).toBeFocused();await page.keyboard.press('Space');
+  await expect(page.locator('#profile-interest-count')).toHaveText('0개 선택');
   await fill(page);await expect(page.getByRole('button',{name:'동물',exact:true})).toHaveAttribute('aria-pressed','true');await expect(page.locator('#profile-interest-count')).toHaveText('2개 선택');
   await page.getByRole('button',{name:'동물',exact:true}).click();await expect(page.locator('#profile-interest-count')).toHaveText('1개 선택');
   await page.getByRole('button',{name:'동화',exact:true}).focus();await page.keyboard.press('Space');await expect(page.locator('#profile-interest-count')).toHaveText('2개 선택');

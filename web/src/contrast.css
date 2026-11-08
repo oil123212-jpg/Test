@@ -84,3 +84,11 @@ dialog::backdrop { background:#0e2118cc; }
   .hero-art::before { width:100%;height:110px; }
   .art-orbit { max-width:100%; }
 }
+/* The home screen centers the generated character and live conversation. */
+.conversation-stage { min-height:360px;gap:20px;padding:28px 16px; }
+#conversation-orb,#conversation-orb.active { width:220px;height:236px;border-radius:0;background:transparent;box-shadow:none;color:var(--ink); }
+#conversation-orb img { width:100%;height:100%;object-fit:contain;display:block; }
+@media(max-width:900px) {
+  .conversation-stage { min-height:300px;padding:24px 12px; }
+  #conversation-orb,#conversation-orb.active { width:180px;height:194px; }
+}

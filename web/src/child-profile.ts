@@ -1,4 +1,4 @@
-import { INTERESTS, INTEREST_GROUPS, parseChildProfile, type ChildProfile } from '../shared/child-profile.mjs';
+import { INTERESTS, parseChildProfile, type ChildProfile } from '../shared/child-profile.mjs';
 import { mountIcons } from './icons';
 
 export function mountChildProfile(onChange:(profile:ChildProfile|null)=>void, requestLogin:()=>void) {
@@ -8,7 +8,6 @@ export function mountChildProfile(onChange:(profile:ChildProfile|null)=>void, re
   let selected=new Set<string>(),controller:AbortController|null=null;
   const channel=typeof BroadcastChannel==='function'?new BroadcastChannel('momo.child-profile'):null;
   const buttons=new Map<string,HTMLButtonElement>();
-  const featured=new Set(['animals','space','fairy_tales','blocks']);
   function grid(items:typeof INTERESTS) {
     const root=document.createElement('div');root.className='interest-grid';
     for(const item of items) {
@@ -17,24 +16,18 @@ export function mountChildProfile(onChange:(profile:ChildProfile|null)=>void, re
       const label=document.createElement('span');label.textContent=item.label;
       const check=document.createElement('span');check.dataset.icon='check';check.className='interest-check';
       button.append(icon,label,check);buttons.set(item.id,button);root.append(button);
-      button.addEventListener('click',()=>{selected.has(item.id)?selected.delete(item.id):selected.add(item.id);markDirty();});
+      button.addEventListener('click',()=>{selected.has(item.id)?selected.delete(item.id):selected.add(item.id);markDirty();button.focus({preventScroll:true});button.scrollIntoView({block:'nearest'});});
     }
     return root;
   }
-  const options=el('profile-interest-options');options.append(grid(INTERESTS.filter(item=>featured.has(item.id))));
-  for(const group of INTEREST_GROUPS) {
-    const details=document.createElement('details');details.className='interest-group';
-    const summary=document.createElement('summary');summary.textContent=group.label;
-    details.append(summary,grid(group.items.filter(item=>!featured.has(item.id))));options.append(details);
-  }
+  const options=el('profile-interest-options');
+  const allOptions=grid(INTERESTS);options.append(allOptions);
   mountIcons(options);
   function selection() {
     for(const [id,button] of buttons) {button.classList.toggle('selected',selected.has(id));button.setAttribute('aria-pressed',String(selected.has(id)));}
     el('profile-interest-count').textContent=`${selected.size}개 선택`;
-    options.querySelectorAll<HTMLDetailsElement>('details').forEach((details,index)=>{
-      const group=INTEREST_GROUPS[index],count=group.items.filter(item=>selected.has(item.id)&&!featured.has(item.id)).length;
-      details.querySelector('summary')!.textContent=group.label+(count?` · ${count}개 선택`:'');
-    });
+    const ordered=[...INTERESTS.filter(item=>selected.has(item.id)),...INTERESTS.filter(item=>!selected.has(item.id))];
+    ordered.forEach((item,index)=>{const button=buttons.get(item.id)!;const before=allOptions.children[index];if(before!==button)allOptions.insertBefore(button,before??null);});
   }
   function controls() {
     el('child-profile-form').querySelectorAll<HTMLInputElement|HTMLSelectElement|HTMLButtonElement>('input,select,button').forEach(input=>{input.disabled=busy;});
@@ -42,7 +35,6 @@ export function mountChildProfile(onChange:(profile:ChildProfile|null)=>void, re
   }
   function render() {
     name.value=profile?.name??'';age.value=profile?String(profile.age):'';selected=new Set(profile?.interests??[]);dirty=false;selection();controls();
-    options.querySelectorAll<HTMLDetailsElement>('details').forEach((details,index)=>{details.open=INTEREST_GROUPS[index].items.some(item=>selected.has(item.id)&&!featured.has(item.id));});
   }
   function markDirty() {dirty=true;selection();status.textContent='변경한 내용이 있어요. 프로필 저장을 눌러 주세요.';}
   name.addEventListener('input',markDirty);age.addEventListener('change',markDirty);
