@@ -83,8 +83,8 @@ test('saved guide is relayed with consent and live deletion disables future life
   const admissions:any[]=[];
   page.on('request',request=>{if(request.url().endsWith('/api/realtime/session')&&request.method()==='POST')admissions.push(request.postDataJSON());});
   await page.goto('./#life-guide');
-  await localConsent(page); await expect(page.locator('#life-guide-save')).toBeEnabled();
-  await page.locator('#life-meal-16').check();await page.locator('#life-guide-enabled').check();await page.locator('#life-guide-save').click();
+  await localConsent(page); await expect(page.locator('#life-guide-login')).toBeHidden(); await expect(page.locator('#life-guide-save')).toBeEnabled();
+  await page.locator('#life-meal-time').selectOption('16');await page.locator('#life-guide-enabled').check();await page.locator('#life-guide-save').click();
   await expect(page.locator('#life-guide-save-status')).toContainText('DB에 저장했어요');
   await page.locator('[data-route="overview"]').click();await page.locator('#realtime-consent').check();await page.locator('#realtime-connect').click();
   await expect(page.locator('#realtime-status')).toHaveText('듣고 있어요');
@@ -98,7 +98,7 @@ test('disabled schedule stays in DB but its times are not sent to Realtime',asyn
   await page.routeWebSocket('**/api/realtime',socket=>socket.onMessage(raw=>{if(typeof raw==='string'&&JSON.parse(raw).type==='start')socket.send(JSON.stringify({type:'ready'}));}));
   const admissions:any[]=[];
   page.on('request',request=>{if(request.url().endsWith('/api/realtime/session')&&request.method()==='POST')admissions.push(request.postDataJSON());});
-  await page.goto('./#life-guide');await localConsent(page);await expect(page.locator('#life-guide-save')).toBeEnabled();await page.locator('#life-meal-16').check();await page.locator('#life-guide-save').click();
+  await page.goto('./#life-guide');await localConsent(page);await expect(page.locator('#life-guide-login')).toBeHidden();await expect(page.locator('#life-guide-save')).toBeEnabled();await page.locator('#life-meal-time').selectOption('16');await page.locator('#life-guide-save').click();
   await expect(page.locator('#life-guide-save-status')).toContainText('DB에 저장했어요');
   await page.locator('[data-route="overview"]').click();await page.locator('#realtime-consent').check();await page.locator('#realtime-connect').click();
   await expect(page.locator('#realtime-status')).toHaveText('듣고 있어요');

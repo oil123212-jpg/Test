@@ -5,6 +5,8 @@ export function mountLifeGuide(onChange: (guide: LifeGuide) => void, requestLogi
   const zone = element<HTMLSelectElement>('life-guide-timezone');
   const status = element('life-guide-save-status');
   let guide = emptyLifeGuide();
+  let draftSlots = emptyLifeGuide().slots;
+  let draftDirty = false;
   let loggedIn = false, busy = false, generation = 0, sessionId: string | null = null;
   let controller: AbortController | null = null;
   const channel = typeof BroadcastChannel === 'function' ? new BroadcastChannel('momo.life-guide') : null;
@@ -18,55 +20,71 @@ export function mountLifeGuide(onChange: (guide: LifeGuide) => void, requestLogi
     fieldset.className = 'card life-guide-category';
     const legend = document.createElement('legend'); legend.textContent = label; fieldset.append(legend);
     const summary = document.createElement('p'); summary.id = `life-guide-${activity}-summary`; summary.className = 'life-guide-selection'; fieldset.append(summary);
+    const timeLabel = document.createElement('label'); timeLabel.className = 'field-label'; timeLabel.htmlFor = `life-${activity}-time`; timeLabel.textContent = '시간 선택';
+    const select = document.createElement('select'); select.id = timeLabel.htmlFor; select.dataset.activity = activity; select.className = 'life-guide-time'; select.setAttribute('aria-label',`${label} 시간 선택`);
+    select.add(new Option('시간 선택', ''));
     for (let period = 0; period < 4; period++) {
-      const group = document.createElement('details');
-      group.open = period === ({ meal: 1, sleep: 3, tidy: 2 }[activity]);
-      const heading = document.createElement('summary'); heading.textContent = ['새벽 · 00:00–06:00', '아침 · 06:00–12:00', '오후 · 12:00–18:00', '저녁 · 18:00–24:00'][period]; group.append(heading);
-      const grid = document.createElement('div'); grid.className = 'life-guide-slots';
-      for (let slot = period * 12; slot < (period + 1) * 12; slot++) {
-        const labelElement = document.createElement('label'); labelElement.className = 'life-guide-slot';
-        const input = document.createElement('input'); input.type = 'checkbox'; input.dataset.activity = activity; input.value = String(slot); input.id = `life-${activity}-${slot}`;
-        input.setAttribute('aria-label', `${label} ${slotLabel(slot)}`);
-        const text = document.createElement('span'); text.textContent = slotLabel(slot);
-        labelElement.append(input, text); grid.append(labelElement);
-      }
-      group.append(grid); fieldset.append(group);
+      const group = document.createElement('optgroup'); group.label = ['새벽', '아침', '오후', '저녁'][period];
+      for (let slot = period * 12; slot < (period + 1) * 12; slot++) group.append(new Option(slotLabel(slot),String(slot)));
+      select.append(group);
     }
+    select.addEventListener('change', () => {
+      if (select.value === '') return;
+      const slot = Number(select.value);
+      if (Number.isInteger(slot) && slot >= 0 && slot < 48 && !draftSlots[activity].includes(slot)) {
+        draftSlots[activity].push(slot); draftSlots[activity].sort((a,b) => a-b);
+      }
+      select.value = ''; dirty();
+    });
+    const selected = document.createElement('ul'); selected.id = `life-${activity}-selected`; selected.className = 'life-guide-selected'; selected.setAttribute('aria-label',`${label} 선택한 시간`);
+    fieldset.append(timeLabel, select, selected);
     const clear = document.createElement('button'); clear.type = 'button'; clear.className = 'text-button'; clear.textContent = `${label} 선택 비우기`;
-    clear.addEventListener('click', () => { fieldset.querySelectorAll<HTMLInputElement>('input').forEach(input => { input.checked = false; }); dirty(); });
+    clear.addEventListener('click', () => { draftSlots[activity] = []; dirty(); });
     fieldset.append(clear); categories.append(fieldset);
   }
   function readDraft(): LifeGuide {
-    const slots = { meal: [], sleep: [], tidy: [] } as Record<LifeActivity, number[]>;
-    categories.querySelectorAll<HTMLInputElement>('input:checked').forEach(input => slots[input.dataset.activity as LifeActivity].push(Number(input.value)));
-    return parseLifeGuide({ version: 1, enabled: enabled.checked, timeZone: zone.value, slots });
+    return parseLifeGuide({ version: 1, enabled: enabled.checked, timeZone: zone.value, slots:draftSlots });
   }
   function summaries() {
     const draft = readDraft();
     for (const activity of Object.keys(LIFE_ACTIVITIES) as LifeActivity[]) {
       const values = draft.slots[activity];
-      element(`life-guide-${activity}-summary`).textContent = values.length ? `${values.length}개 선택 · ${values.map(slotLabel).join(', ')}` : '선택한 시간이 없어요';
+      element(`life-guide-${activity}-summary`).textContent = values.length ? `${values.length}개 선택` : '선택한 시간이 없어요';
+      const list = element(`life-${activity}-selected`); list.replaceChildren();
+      for (const slot of values) {
+        const item = document.createElement('li');
+        const text = document.createElement('span'); text.textContent = slotLabel(slot);
+        const remove = document.createElement('button'); remove.type = 'button'; remove.textContent = '×'; remove.setAttribute('aria-label',`${LIFE_ACTIVITIES[activity]} ${slotLabel(slot)} 삭제`);
+        remove.disabled = busy;
+        remove.addEventListener('click', () => {
+          draftSlots[activity] = draftSlots[activity].filter(value => value !== slot); dirty(); element(`life-${activity}-time`).focus();
+        });
+        item.append(text,remove); list.append(item);
+      }
+      const select = element<HTMLSelectElement>(`life-${activity}-time`);
+      for (const option of select.options) if (option.value !== '') option.disabled = values.includes(Number(option.value));
     }
   }
   function render() {
-    if (!zones.has(guide.timeZone)) { zones.add(guide.timeZone); zone.add(new Option(guide.timeZone,guide.timeZone)); }
-    enabled.checked = guide.enabled; zone.value = guide.timeZone;
-    categories.querySelectorAll<HTMLInputElement>('input').forEach(input => {
-      input.checked = guide.slots[input.dataset.activity as LifeActivity].includes(Number(input.value));
-      if (input.checked) input.closest('details')!.open = true;
-    });
-    summaries(); updateConversationStatus(); controls();
+    renderDraft(guide); draftDirty = false; updateConversationStatus(); controls();
+  }
+  function renderDraft(value: LifeGuide) {
+    const draft = parseLifeGuide(value);
+    if (!zones.has(draft.timeZone)) { zones.add(draft.timeZone); zone.add(new Option(draft.timeZone,draft.timeZone)); }
+    enabled.checked = draft.enabled; zone.value = draft.timeZone; draftSlots = draft.slots;
+    summaries();
   }
   function controls() {
-    element('life-guide-form').querySelectorAll<HTMLInputElement | HTMLButtonElement | HTMLSelectElement>('input,select,button').forEach(input => { input.disabled = !loggedIn || busy; });
+    element('life-guide-form').querySelectorAll<HTMLInputElement | HTMLButtonElement | HTMLSelectElement>('input,select,button').forEach(input => { input.disabled = busy; });
+    element<HTMLButtonElement>('life-guide-delete').disabled = !loggedIn || busy;
     element<HTMLButtonElement>('life-guide-login').disabled = busy;
     element('life-guide-login').hidden = loggedIn;
   }
   function updateConversationStatus() {
     element('life-guide-conversation-status').textContent = guide.enabled ? `라이프 가이드 켜짐 · ${guide.timeZone} 기준, 해당 시간대에 가끔 생활 이야기를 건네요.` : '라이프 가이드 꺼짐 · 부모님 페이지에서 생활 시간을 설정할 수 있어요.';
   }
-  function dirty() { summaries(); status.textContent = '변경한 내용이 있어요. 저장하고 적용을 눌러 주세요.'; }
-  element('life-guide-form').addEventListener('change', dirty);
+  function dirty() { draftDirty = true; summaries(); status.textContent = '변경한 내용이 있어요. 저장하고 적용을 눌러 주세요.'; }
+  enabled.addEventListener('change',dirty); zone.addEventListener('change',dirty);
   const errorMessage = (error: unknown) => {
     const code = error instanceof Error ? error.message : '';
     if (code === 'DATABASE_NOT_CONFIGURED') return 'DB 연결 설정이 필요해요. Railway 웹 서비스의 DATABASE_URL을 확인해 주세요.';
@@ -82,6 +100,7 @@ export function mountLifeGuide(onChange: (guide: LifeGuide) => void, requestLogi
     return result;
   }
   async function login() {
+    const pendingDraft = draftDirty ? readDraft() : null;
     const id = ++generation; controller?.abort(); controller = new AbortController();
     busy = true; controls(); status.textContent = 'DB에서 이 브라우저의 생활 시간을 불러오고 있어요…';
     try {
@@ -103,6 +122,10 @@ export function mountLifeGuide(onChange: (guide: LifeGuide) => void, requestLogi
           }
         } catch {}
       }
+      if (pendingDraft) {
+        renderDraft(pendingDraft); draftDirty = true;
+        status.textContent = '선택한 시간을 유지했어요. 저장하고 적용을 눌러 주세요.';
+      }
     } catch(error) { if (id === generation) { loggedIn = false; status.textContent = errorMessage(error); } }
     finally { if (id === generation) { busy = false; controls(); } }
   }
@@ -117,7 +140,8 @@ export function mountLifeGuide(onChange: (guide: LifeGuide) => void, requestLogi
   element('life-guide-login').addEventListener('click',requestLogin);
   element('life-guide-form').addEventListener('submit', async event => {
     event.preventDefault();
-    if (!loggedIn || busy) return;
+    if (busy) return;
+    if (!loggedIn) { requestLogin(); return; }
     const next = readDraft();
     if (next.enabled && !Object.values(next.slots).some(values => values.length)) {
       status.textContent = '생활 이야기를 연결하려면 시간을 하나 이상 선택해 주세요.'; return;
@@ -128,6 +152,7 @@ export function mountLifeGuide(onChange: (guide: LifeGuide) => void, requestLogi
       await api('PUT','',schedule);
       if (id !== generation) return;
       guide = next; onChange(guide); updateConversationStatus(); channel?.postMessage({type:'changed'});
+      draftDirty = false;
       try { localStorage.removeItem('momo.life-guide.v1'); } catch {}
       status.textContent = next.enabled ? 'DB에 저장했어요. 다음 답변부터 새 설정을 사용해요.' : 'DB에 저장했어요. 생활 화두 제안은 꺼져 있어요.';
     } catch(error) { if (id === generation) status.textContent = errorMessage(error) + ' 변경 전 설정을 유지해요.'; }
