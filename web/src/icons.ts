@@ -1,4 +1,11 @@
 const paths: Record<string, string> = {
+  animal:'<path d="m5 9-1-6 6 4h4l6-4-1 6v7c0 6-14 6-14 0Z"/><path d="M8 12h.01M16 12h.01m-6 4 2 1 2-1"/>',
+  rocket:'<path d="M9 15c-4-6 3-11 12-12 0 8-6 15-12 12Z"/><circle cx="16" cy="8" r="2"/><path d="m9 8-5 1-2 5 7-1m7 2-1 5-5 2-1-7M6 17l-3 4 5-2"/>',
+  book:'<path d="M12 5C8 2 3 4 3 4v15s5-2 9 1c4-3 9-1 9-1V4s-5-2-9 1Zm0 0v15"/>',
+  blocks:'<rect x="3" y="12" width="8" height="9" rx="1"/><rect x="13" y="12" width="8" height="9" rx="1"/><rect x="8" y="3" width="8" height="7" rx="1"/>',
+  car:'<path d="m5 10 2-6h10l2 6M3 10h18v8H3Zm2 8v3m14-3v3M6 14h2m8 0h2"/>',
+  music:'<path d="M9 18V5l11-2v13M9 8l11-2"/><ellipse cx="6" cy="18" rx="3" ry="3"/><ellipse cx="17" cy="16" rx="3" ry="3"/>',
+  ball:'<circle cx="12" cy="12" r="9"/><path d="m12 8 4 3-2 5h-5l-1-5Zm0 0V3m4 8 5-2m-7 7 3 4m-8-4-3 4m2-9L3 9"/>',
   bubble:'<path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.4 8.4 0 0 1 3.8-.9h.5a8.5 8.5 0 0 1 8 8z"/><path d="M8 11h.01M12 11h.01M16 11h.01"/>',
   grid:'<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
   wave:'<path d="M3 10v4M7 6v12M12 3v18M17 7v10M21 10v4"/>',

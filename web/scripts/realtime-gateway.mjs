@@ -2,7 +2,8 @@ import { randomBytes, timingSafeEqual } from 'node:crypto';
 import { WebSocket, WebSocketServer } from 'ws';
 import { emptyLifeGuide, parseLifeGuide, LifeGuidePlanner } from '../shared/life-guide.mjs';
 import { REALTIME_POLICY } from '../shared/realtime-policy.mjs';
-import { MOMO_BASE_PROMPT, buildResponseInstructions } from './momo-prompt.mjs';
+import { buildSessionInstructions, buildResponseInstructions } from './momo-prompt.mjs';
+import { parseChildProfile } from '../shared/child-profile.mjs';
 export { REALTIME_POLICY };
 const MAX_FRAME = 16384;
 function safeEqual(a, b) {
@@ -83,6 +84,9 @@ export function attachRealtime(server, options = {}) {
       let lifeGuide;
       try { lifeGuide = body.lifeGuide === undefined ? emptyLifeGuide() : parseLifeGuide(body.lifeGuide); }
       catch { json(res,400,{code:'INVALID_LIFE_GUIDE'}); return true; }
+      let profile;
+      try {profile=body.profile==null?null:parseChildProfile(body.profile);}
+      catch {json(res,400,{code:'INVALID_PROFILE'});return true;}
       starts = starts.filter(time => time > Date.now() - 3600000);
       if (tickets.size >= 128 || active.size >= maxSessions || starts.length >= hourlyLimit) {
         json(res, 429, { code:'SESSION_LIMIT' }); return true;
@@ -91,7 +95,7 @@ export function attachRealtime(server, options = {}) {
       // One pending ticket per browser; tickets are one-use and expire quickly.
       for (const [key, value] of tickets) if (value.owner === owner) tickets.delete(key);
       const token = randomBytes(32).toString('hex');
-      tickets.set(token, { owner, lifeGuide, expires: Date.now() + 20000 });
+      tickets.set(token, { owner, lifeGuide, profile, expires: Date.now() + 20000 });
       const secure = req.headers.origin?.startsWith('https:') ? '; Secure' : '';
       res.setHeader('Set-Cookie', `momo_rt=${owner}; HttpOnly; SameSite=Strict; Path=/api/realtime; Max-Age=${maxSeconds + 60}${secure}`);
       json(res, 200, { token, maxSeconds });
@@ -108,7 +112,7 @@ export function attachRealtime(server, options = {}) {
   server.on('upgrade', onUpgrade);
   function connect(client, req) {
     let upstream, ready = false, finished = false, responseId = null, inputBytes = 0, outputBytes = 0;
-    let planner, responseInFlight = false, cancelRequested = false, pendingTurn = false;
+    let planner, profile=null, responseInFlight = false, cancelRequested = false, pendingTurn = false;
     let guideUpdates = [];
     const committed = new Set();
     const cancelled = new Set();
@@ -138,7 +142,7 @@ export function attachRealtime(server, options = {}) {
       if (!pendingTurn || responseInFlight || !ready || finished) return;
       pendingTurn = false; responseInFlight = true; cancelRequested = false;
       const cue = planner.nextCue(options.now?.() ?? new Date());
-      upstreamSend({type:'response.create',response:{instructions:buildResponseInstructions(cue)}});
+      upstreamSend({type:'response.create',response:{instructions:buildResponseInstructions(cue,profile)}});
     }
     client.on('message', (data, binary) => {
       if (finished) return;
@@ -151,6 +155,7 @@ export function attachRealtime(server, options = {}) {
         if (auth.type !== 'start' || !grant || grant.owner !== cookie(req) || grant.expires < Date.now()) { finish('AUTH_REQUIRED'); return; }
         tickets.delete(auth.token);
         planner = new LifeGuidePlanner(grant.lifeGuide, options.random ?? Math.random);
+        profile=grant.profile;
         active.get(client).token = auth.token;
         if (active.size > maxSessions || starts.length >= hourlyLimit) { finish('SESSION_LIMIT'); return; }
         starts.push(Date.now());
@@ -160,7 +165,7 @@ export function attachRealtime(server, options = {}) {
         });
         upstream.on('open', () => upstreamSend({ type:'session.update', session: {
           type:'realtime', output_modalities:['audio'], max_output_tokens:512,
-          instructions:MOMO_BASE_PROMPT,
+          instructions:buildSessionInstructions(profile),
           audio: {
             input: { format:{type:'audio/pcm',rate:24000}, turn_detection:{type:'server_vad',threshold:0.5,prefix_padding_ms:300,silence_duration_ms:650,create_response:false,interrupt_response:true} },
             output: { format:{type:'audio/pcm',rate:24000}, voice },
@@ -225,11 +230,14 @@ export function attachRealtime(server, options = {}) {
         if (event.type === 'cancel') { pendingTurn = false; cancelResponse(); }
         else if (event.type === 'end') finish();
         else if (event.type === 'clear') upstreamSend({type:'input_audio_buffer.clear'});
-        else if (event.type === 'life_guide.update') {
+        else if (event.type === 'life_guide.update' || event.type === 'profile.update') {
           guideUpdates = guideUpdates.filter(time => time > Date.now() - 60000);
           if (guideUpdates.length >= 30) { finish('INVALID_REQUEST'); return; }
           guideUpdates.push(Date.now());
-          try { planner.update(event.lifeGuide); } catch { finish('INVALID_LIFE_GUIDE'); }
+          try {
+            if(event.type==='life_guide.update')planner.update(event.lifeGuide);
+            else profile=event.profile===null?null:parseChildProfile(event.profile);
+          } catch { finish(event.type==='profile.update'?'INVALID_PROFILE':'INVALID_LIFE_GUIDE'); }
         }
         else finish('INVALID_REQUEST');
       }

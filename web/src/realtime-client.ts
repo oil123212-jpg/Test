@@ -1,5 +1,6 @@
 import { emptyLifeGuide, type LifeGuide } from '../shared/life-guide.mjs';
 import { REALTIME_POLICY } from '../shared/realtime-policy.mjs';
+import { type ChildProfile } from '../shared/child-profile.mjs';
 export type ConversationState = 'idle' | 'connecting' | 'listening' | 'thinking' | 'speaking';
 interface Callbacks { state: (value: ConversationState) => void; error: (code: string) => void; level: (peak: number) => void; }
 export { REALTIME_POLICY };
@@ -14,6 +15,7 @@ export const realtimeErrors: Record<string, string> = {
   ACCESS_DENIED:'이용 코드가 맞지 않아요.',
   CONSENT_REQUIRED:'실시간 음성 전송 안내에 먼저 동의해 주세요.',
   INVALID_LIFE_GUIDE:'생활 시간 설정을 확인한 뒤 다시 대화해 주세요.',
+  INVALID_PROFILE:'아이의 프로필을 확인한 뒤 다시 대화해 주세요.',
   CONNECT_TIMEOUT:'AI 연결 시간이 초과됐어요. 네트워크와 모델 설정을 확인해 주세요.',
   API_REQUEST_FAILED:'Realtime 세션 설정이 거부됐어요. 서버의 모델과 음성 설정을 확인해 주세요.',
   AUDIO_LIMIT:'오디오 대기열 한도에 도달해 대화를 종료했어요.',
@@ -53,13 +55,19 @@ export class RealtimeConversation {
     this.sources.clear(); this.nextTime = 0;
   }
   private lifeGuide: LifeGuide = emptyLifeGuide();
+  private childProfile: ChildProfile | null = null;
+  updateProfile(profile:ChildProfile|null) {
+    this.childProfile=profile;
+    if(this.socket?.readyState===WebSocket.OPEN)this.socket.send(JSON.stringify({type:'profile.update',profile}));
+  }
   updateLifeGuide(guide: LifeGuide) {
     this.lifeGuide = guide.enabled ? guide : emptyLifeGuide();
     if (this.socket?.readyState === WebSocket.OPEN) this.socket.send(JSON.stringify({type:'life_guide.update',lifeGuide:this.lifeGuide}));
   }
-  async start(inputDevice: string, outputDevice: string, volume: number, accessCode: string, lifeGuide = emptyLifeGuide()) {
+  async start(inputDevice: string, outputDevice: string, volume: number, accessCode: string, lifeGuide = emptyLifeGuide(), profile:ChildProfile|null = null) {
     this.stop();
     this.lifeGuide = lifeGuide.enabled ? lifeGuide : emptyLifeGuide();
+    this.childProfile=profile;
     const generation = ++this.generation;
     const controller = this.controller = new AbortController();
     this.callbacks.state('connecting');
@@ -82,7 +90,7 @@ export class RealtimeConversation {
       const response = await fetch('/api/realtime/session', {
         method:'POST', credentials:'same-origin', signal:controller.signal,
         headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({consent:true,policy:REALTIME_POLICY,accessCode,lifeGuide:this.lifeGuide}),
+        body:JSON.stringify({consent:true,policy:REALTIME_POLICY,accessCode,lifeGuide:this.lifeGuide,profile:this.childProfile}),
       });
       const grant = await response.json();
       if (!response.ok) throw new Error(grant.code || 'NETWORK_ERROR');
@@ -105,6 +113,7 @@ export class RealtimeConversation {
           if (message.type === 'ready') {
             // Capture edits made while HTTP admission or the provider handshake was pending.
             socket.send(JSON.stringify({type:'life_guide.update',lifeGuide:this.lifeGuide}));
+            socket.send(JSON.stringify({type:'profile.update',profile:this.childProfile}));
             clearTimeout(this.timeout); this.pendingReject=null; this.callbacks.state('listening'); resolve();
           } else if (message.type === 'error') this.fail(message.code);
           else if (message.type === 'speech.started' || message.type === 'response.cancelled') { this.stopPlayback(); this.callbacks.state('listening'); }
@@ -171,6 +180,7 @@ export class RealtimeConversation {
     if(this.context){void this.context.close().catch(()=>{});this.context=null;}
     if(this.relayToken){const token=this.relayToken;this.relayToken=null;void fetch('/api/realtime/session',{method:'DELETE',headers:{'X-Realtime-Session':token},credentials:'same-origin',keepalive:true}).catch(()=>{});}
     this.muted=false; this.callbacks.level(0); this.callbacks.state('idle');
+    this.childProfile=null;
     // Only same-origin, short-lived relay sessions; no provider key is sent here.
   }
 }

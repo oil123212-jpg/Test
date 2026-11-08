@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { PARENT_SETTINGS_POLICY } from '../shared/child-profile.mjs';
 
 async function consentToLocalAudio(page: Page) {
   await page.locator('#login-button').click();
@@ -72,7 +73,7 @@ test('native worklet records 5 seconds and resamples to 24kHz without autoplay',
   page.on('request', request => {
     const url=new URL(request.url());
     // Login sends consent metadata; audio or other uploads still fail this check.
-    if (url.pathname === '/api/life-guide/login' && request.method() === 'POST' && JSON.stringify(request.postDataJSON()) === JSON.stringify({consent:true,policy:'life-guide-storage-v1'})) return;
+    if (url.pathname === '/api/life-guide/login' && request.method() === 'POST' && JSON.stringify(request.postDataJSON()) === JSON.stringify({consent:true,policy:PARENT_SETTINGS_POLICY})) return;
     if (request.method() !== 'GET' || url.hostname !== '127.0.0.1') uploads.push(request.url());
   });
   await page.goto('./'); await consentToLocalAudio(page); await page.locator('#record').click();
@@ -107,6 +108,7 @@ test('settings reset remains accessible after removing privacy and checklist pag
   await page.goto('./'); await page.locator('#try-demo').click();
   await expect(page.locator('#play')).toBeEnabled();
   await page.locator('#open-settings').click();
+  await page.getByRole('tab',{name:'오디오 설정',exact:true}).click();
   await page.locator('#volume').fill('20'); await expect(page.locator('#volume-value')).toHaveText('20%');
   await page.locator('#reset-session').click();
   await expect(page.locator('#volume-value')).toHaveText('10%');

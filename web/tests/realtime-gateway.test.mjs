@@ -111,6 +111,17 @@ test('client prompt and age claims cannot override the server child conversation
   assert.ok(!ordinary.includes('성인 개발자'));
   assert.match(ordinary,/이번 답변에서는 생활 습관이나 일정 화두를 먼저 꺼내지 말고/);
 });
+test('validated child profile reaches session and replies and can be updated or cleared live',async t=>{
+  const f=await setup(t);const profile={version:1,name:'수아',age:4,interests:['animals','space']};
+  assert.equal((await f.session({...consentBody,profile:{...profile,age:7}})).body.code,'INVALID_PROFILE');
+  const {ws,events}=await f.socket(await f.session({...consentBody,profile}));await until(()=>events.find(e=>e.type==='ready'));
+  assert.ok(f.messages.find(e=>e.type==='session.update').session.instructions.includes('수아'));
+  await turn(f,1);assert.ok(f.messages.find(e=>e.type==='response.create').response.instructions.includes('수아'));
+  ws.send(JSON.stringify({type:'profile.update',profile:{...profile,name:'민준',age:6}}));ws.send(Buffer.from([1,0]));await until(()=>f.messages.find(e=>e.type==='input_audio_buffer.append'));
+  await turn(f,2);const changed=f.messages.filter(e=>e.type==='response.create')[1].response.instructions;assert.ok(changed.includes('민준'));assert.ok(!changed.includes('수아'));assert.ok(changed.startsWith(MOMO_BASE_PROMPT));
+  ws.send(JSON.stringify({type:'profile.update',profile:null}));ws.send(Buffer.from([1,0]));await until(()=>f.messages.filter(e=>e.type==='input_audio_buffer.append').length===2);
+  await turn(f,3);assert.ok(!f.messages.filter(e=>e.type==='response.create')[2].response.instructions.includes('민준'));
+});
 test('out-of-window schedules, disabled guide, and missing guide keep ordinary replies',async t=>{
   for(const schedule of [lifeGuide,{...lifeGuide,enabled:false},undefined]) {
     const f=await setup(t,{random:()=>0,now:()=>new Date('2026-11-08T04:00:00Z')});

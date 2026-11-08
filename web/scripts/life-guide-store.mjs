@@ -1,7 +1,8 @@
 import { createHash, randomBytes } from 'node:crypto';
 import pg from 'pg';
 import { parseLifeGuide } from '../shared/life-guide.mjs';
-export const STORAGE_POLICY = 'life-guide-storage-v1';
+import { parseChildProfile, PARENT_SETTINGS_POLICY } from '../shared/child-profile.mjs';
+export const STORAGE_POLICY = PARENT_SETTINGS_POLICY;
 export function parseSchedule(value) {
   if (!value || Object.keys(value).some(key => !['version','timeZone','slots'].includes(key))) throw new Error('INVALID_SCHEDULE');
   const { version, timeZone, slots } = parseLifeGuide({ ...value, enabled:false });
@@ -17,6 +18,9 @@ export function postgresLifeGuideStore(connectionString = process.env.DATABASE_U
     if (!initialized) initialized = pool.query(`CREATE TABLE IF NOT EXISTS momo_life_guides (
       device_hash text PRIMARY KEY CHECK (length(device_hash) = 64),
       schedule jsonb NOT NULL
+    ); CREATE TABLE IF NOT EXISTS momo_child_profiles (
+      device_hash text PRIMARY KEY CHECK (length(device_hash) = 64),
+      profile jsonb NOT NULL
     )`).catch(error => { initialized = undefined; throw error; });
     return initialized;
   }
@@ -25,6 +29,9 @@ export function postgresLifeGuideStore(connectionString = process.env.DATABASE_U
     async get(device) { await ready(); const result = await pool.query('SELECT schedule FROM momo_life_guides WHERE device_hash = $1',[device]); return result.rows[0]?.schedule ?? null; },
     async save(device, schedule) { await ready(); await pool.query('INSERT INTO momo_life_guides (device_hash, schedule) VALUES ($1, $2::jsonb) ON CONFLICT (device_hash) DO UPDATE SET schedule = EXCLUDED.schedule',[device,JSON.stringify(parseSchedule(schedule))]); },
     async delete(device) { await ready(); await pool.query('DELETE FROM momo_life_guides WHERE device_hash = $1',[device]); },
+    async getProfile(device) { await ready(); const result=await pool.query('SELECT profile FROM momo_child_profiles WHERE device_hash = $1',[device]); return result.rows[0]?.profile ?? null; },
+    async saveProfile(device,profile) { await ready(); await pool.query('INSERT INTO momo_child_profiles (device_hash, profile) VALUES ($1, $2::jsonb) ON CONFLICT (device_hash) DO UPDATE SET profile = EXCLUDED.profile',[device,JSON.stringify(parseChildProfile(profile))]); },
+    async deleteProfile(device) { await ready(); await pool.query('DELETE FROM momo_child_profiles WHERE device_hash = $1',[device]); },
     close: () => pool.end(),
   };
 }
@@ -63,7 +70,7 @@ export function attachLifeGuideStorage(server, { store = postgresLifeGuideStore(
     try { path = new URL(req.url || '/', 'http://local').pathname; } catch { return false; }
     if (path !== '/api/life-guide' && !path.startsWith('/api/life-guide/')) return false;
     if (path === '/api/life-guide/config' && req.method === 'GET') { json(res,200,{available:Boolean(store),policy:STORAGE_POLICY}); return true; }
-    if (!['/api/life-guide','/api/life-guide/login','/api/life-guide/logout'].includes(path)) { json(res,404,{code:'NOT_FOUND'}); return true; }
+    if (!['/api/life-guide','/api/life-guide/profile','/api/life-guide/login','/api/life-guide/logout'].includes(path)) { json(res,404,{code:'NOT_FOUND'}); return true; }
     if (req.method !== 'GET' && !originAllowed(req)) { json(res,403,{code:'ORIGIN_DENIED'}); return true; }
     if (req.method === 'GET' && req.headers['sec-fetch-site'] === 'cross-site') { json(res,403,{code:'ORIGIN_DENIED'}); return true; }
     try {
@@ -96,9 +103,19 @@ export function attachLifeGuideStorage(server, { store = postgresLifeGuideStore(
         ]);
         json(res,200,{sessionId:token}); return true;
       }
-      if (path !== '/api/life-guide') { json(res,405,{code:'METHOD_NOT_ALLOWED'}); return true; }
+      if (!['/api/life-guide','/api/life-guide/profile'].includes(path)) { json(res,405,{code:'METHOD_NOT_ALLOWED'}); return true; }
       const session = identify(req);
       if (!session) { json(res,401,{code:'LOGIN_REQUIRED'}); return true; }
+      if (path === '/api/life-guide/profile') {
+        if (req.method === 'GET') { const profile=await store.getProfile(session.device); json(res,200,{profile:profile ? parseChildProfile(profile) : null}); return true; }
+        if (req.method === 'PUT') {
+          if (!req.headers['content-type']?.startsWith('application/json')) {json(res,415,{code:'JSON_REQUIRED'});return true;}
+          let profile; try {profile=parseChildProfile(await body(req));}catch {json(res,400,{code:'INVALID_PROFILE'});return true;}
+          await store.saveProfile(session.device,profile);json(res,200,{profile});return true;
+        }
+        if (req.method === 'DELETE') {await store.deleteProfile(session.device);json(res,200,{deleted:true});return true;}
+        json(res,405,{code:'METHOD_NOT_ALLOWED'});return true;
+      }
       if (req.method === 'GET') {
         const saved = await store.get(session.device);
         json(res,200,{schedule:saved ? parseSchedule(saved) : null}); return true;

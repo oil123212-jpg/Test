@@ -1,9 +1,11 @@
 import './style.css';
 import './mobile.css';
+import './profile.css';
 import { mountIcons } from './icons';
 import { RealtimeConversation, realtimeErrors, type ConversationState } from './realtime-client';
 import { AudioEngine } from './audio-engine';
 import { mountLifeGuide } from './life-guide';
+import { mountChildProfile } from './child-profile';
 import { demoRecording, waveform, wipe, type RecordingData } from './audio-utils';
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 const engine = new AudioEngine();
@@ -126,14 +128,15 @@ const conversation = new RealtimeConversation({
   error(code) { const message=realtimeErrors[code] || realtimeErrors.UPSTREAM_UNAVAILABLE; $('realtime-message').textContent=message; $('realtime-status').textContent='연결 확인 필요'; toast(message,true); },
   level(peak) { $('conversation-orb').style.setProperty('--voice-scale',String(1+Math.min(.2,peak*.3))); },
 });
-const lifeGuide = mountLifeGuide(guide => conversation.updateLifeGuide(guide), () => { if (localAudioConsent) void lifeGuide.login(); else openConsent(); });
+const childProfile = mountChildProfile(profile => conversation.updateProfile(profile), () => {if(localAudioConsent)void lifeGuide.login();else openConsent();});
+const lifeGuide = mountLifeGuide(guide => conversation.updateLifeGuide(guide), () => { if (localAudioConsent) void lifeGuide.login(); else openConsent(); }, (value,error) => childProfile.session(value,error));
 $('realtime-connect').addEventListener('click', () => {
   if(!requireAudioConsent()) return;
   if(!$<HTMLInputElement>('realtime-consent').checked) { $<HTMLInputElement>('realtime-consent').focus(); toast('실시간 음성 전송 안내에 동의해 주세요.'); return; }
   const code=$<HTMLInputElement>('realtime-access-code').value;
   if(requiresAccessCode && !code) { $<HTMLInputElement>('realtime-access-code').focus(); toast('이용 코드를 입력해 주세요.'); return; }
   resetAudio();
-  void conversation.start($<HTMLSelectElement>('input-device').value,$<HTMLSelectElement>('output-device').value,volume,code,lifeGuide.current());
+  void conversation.start($<HTMLSelectElement>('input-device').value,$<HTMLSelectElement>('output-device').value,volume,code,lifeGuide.current(),childProfile.current());
   $<HTMLInputElement>('realtime-access-code').value='';
 });
 $('realtime-end').addEventListener('click', () => conversation.stop());
@@ -255,7 +258,21 @@ $('reset-session').addEventListener('click', () => {
   volume = .1; $<HTMLInputElement>('volume').value = '10'; $('volume-value').textContent = '10%';
   updateState(); toast('임시 음성과 오디오 설정을 초기화했어요.');
 });
-$('open-settings').addEventListener('click', () => $<HTMLDialogElement>('settings-dialog').showModal());
+const settingsDialog=$<HTMLDialogElement>('settings-dialog');
+const settingsTabs=[$('profile-tab'),$('audio-settings-tab')];
+function selectSettingsTab(index:number) {
+  settingsTabs.forEach((tab,position)=>{const active=index===position;tab.setAttribute('aria-selected',String(active));tab.tabIndex=active?0:-1;$(tab.getAttribute('aria-controls')!).hidden=!active;});
+}
+settingsTabs.forEach((tab,index)=>{
+  tab.addEventListener('click',()=>selectSettingsTab(index));
+  tab.addEventListener('keydown',event=>{
+    const next=event.key==='Home'?0:event.key==='End'?1:['ArrowRight','ArrowLeft'].includes(event.key)?1-index:null;
+    if(next!==null){event.preventDefault();selectSettingsTab(next);settingsTabs[next].focus();}
+  });
+});
+$('open-settings').addEventListener('click', () => {selectSettingsTab(0);settingsDialog.showModal();});
+$('settings-close').addEventListener('click',()=>settingsDialog.close());
+$('settings-done').addEventListener('click',()=>settingsDialog.close());
 $('open-help').addEventListener('click', () => $<HTMLDialogElement>('help-dialog').showModal());
 $<HTMLInputElement>('volume').addEventListener('input', event => {
   const value = Number((event.target as HTMLInputElement).value); volume = Math.max(.01, Math.min(.2, value / 100));

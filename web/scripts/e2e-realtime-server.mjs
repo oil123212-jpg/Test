@@ -4,8 +4,10 @@ import { once } from 'node:events';
 import { createAppServer } from './serve.mjs';
 import { postgresLifeGuideStore } from './life-guide-store.mjs';
 const rows = new Map();
+const profiles = new Map();
 const store = process.env.LIFE_GUIDE_TEST_DATABASE_URL ? postgresLifeGuideStore(process.env.LIFE_GUIDE_TEST_DATABASE_URL) : {
   ready: async()=>{},get:async key=>rows.get(key)??null,save:async(key,value)=>{rows.set(key,structuredClone(value));},delete:async key=>{rows.delete(key);},close:async()=>{},
+  getProfile:async key=>profiles.get(key)??null,saveProfile:async(key,value)=>{profiles.set(key,structuredClone(value));},deleteProfile:async key=>{profiles.delete(key);},
 };
 const provider=new WebSocketServer({port:0,host:'127.0.0.1'});await once(provider,'listening');
 provider.on('connection',socket=>{
