@@ -10,7 +10,7 @@ export const realtimeErrors: Record<string, string> = {
   API_QUOTA:'OpenAI API 잔액과 사용 한도를 확인해 주세요.',
   API_RATE_LIMIT:'API 요청 한도에 도달했어요. 잠시 후 다시 시도해 주세요.',
   MODEL_UNAVAILABLE:'Railway의 OPENAI_REALTIME_MODEL에 사용 가능한 모델을 설정해 주세요.',
-  SESSION_LIMIT:'동시 대화 또는 시간당 이용 한도에 도달했어요. 잠시 후 다시 시도해 주세요.',
+  SESSION_LIMIT:'대화 시작 요청이 잠시 몰렸어요. 잠시 후 다시 시도해 주세요.',
   ACCESS_DENIED:'이용 코드가 맞지 않아요.',
   CONSENT_REQUIRED:'실시간 음성 전송 안내에 먼저 동의해 주세요.',
   INVALID_LIFE_GUIDE:'생활 시간 설정을 확인한 뒤 다시 대화해 주세요.',

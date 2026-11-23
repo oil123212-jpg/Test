@@ -29,11 +29,10 @@ export function attachRealtime(server, options = {}) {
   const model = options.model ?? process.env.OPENAI_REALTIME_MODEL ?? 'gpt-realtime-2';
   const voice = options.voice ?? process.env.OPENAI_REALTIME_VOICE ?? 'marin';
   const accessCode = options.accessCode ?? process.env.REALTIME_ACCESS_CODE ?? '';
-  const maxSessions = options.maxConcurrent ?? 2;
-  const hourlyLimit = options.hourlyLimit ?? 20;
   const upstreamURL = options.upstreamURL ?? `wss://api.openai.com/v1/realtime?model=${encodeURIComponent(model)}`;
   const tickets = new Map(), active = new Map();
-  let starts = [], admissions = [];
+  let admissions = [];
+  const awaitingAuth = new Set();
   const wss = new WebSocketServer({ noServer: true, maxPayload: MAX_FRAME, perMessageDeflate: false });
   function originAllowed(req) {
     try {
@@ -50,7 +49,6 @@ export function attachRealtime(server, options = {}) {
   const prune = setInterval(() => {
     const now = Date.now();
     for (const [key, value] of tickets) if (value.expires < now) tickets.delete(key);
-    starts = starts.filter(time => time > now - 3600000);
   }, 10000);
   prune.unref();
   async function handle(req, res) {
@@ -87,8 +85,7 @@ export function attachRealtime(server, options = {}) {
       let profile;
       try {profile=body.profile==null?null:parseChildProfile(body.profile);}
       catch {json(res,400,{code:'INVALID_PROFILE'});return true;}
-      starts = starts.filter(time => time > Date.now() - 3600000);
-      if (tickets.size >= 128 || active.size >= maxSessions || starts.length >= hourlyLimit) {
+      if (tickets.size >= 128) {
         json(res, 429, { code:'SESSION_LIMIT' }); return true;
       }
       const owner = cookie(req) || randomBytes(32).toString('hex');
@@ -104,13 +101,14 @@ export function attachRealtime(server, options = {}) {
   }
   const onUpgrade = (req, socket, head) => {
     let path; try { path = new URL(req.url || '/', 'http://local').pathname; } catch { socket.destroy(); return; }
-    if (path !== '/api/realtime' || !originAllowed(req) || !apiKey || active.size >= maxSessions) {
+    if (path !== '/api/realtime' || !originAllowed(req) || !apiKey || awaitingAuth.size >= 128) {
       socket.end('HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n'); return;
     }
     wss.handleUpgrade(req, socket, head, client => connect(client, req));
   };
   server.on('upgrade', onUpgrade);
   function connect(client, req) {
+    awaitingAuth.add(client);
     let upstream, ready = false, finished = false, responseId = null;
     let planner, profile=null, responseInFlight = false, cancelRequested = false, pendingTurn = false;
     let turnInstructions, usedLookup = false;
@@ -122,6 +120,7 @@ export function attachRealtime(server, options = {}) {
     function finish(code) {
       if (finished) return;
       finished = true; clearTimeout(handshakeTimer);
+      awaitingAuth.delete(client);
       active.delete(client);
       if (code) send({ type:'error', code });
       if (upstream) { if (upstream.readyState === WebSocket.OPEN) upstream.close(); else upstream.terminate(); }
@@ -156,12 +155,11 @@ export function attachRealtime(server, options = {}) {
         if (!auth || typeof auth !== 'object' || Array.isArray(auth)) { finish('AUTH_REQUIRED'); return; }
         const grant = tickets.get(auth.token);
         if (auth.type !== 'start' || !grant || grant.owner !== cookie(req) || grant.expires < Date.now()) { finish('AUTH_REQUIRED'); return; }
+        awaitingAuth.delete(client);
         tickets.delete(auth.token);
         planner = new LifeGuidePlanner(grant.lifeGuide, options.random ?? Math.random);
         profile=grant.profile;
         active.get(client).token = auth.token;
-        if (active.size > maxSessions || starts.length >= hourlyLimit) { finish('SESSION_LIMIT'); return; }
-        starts.push(Date.now());
         upstream = new WebSocket(upstreamURL, {
           headers: { Authorization:`Bearer ${apiKey}` }, maxPayload:1024 * 1024, handshakeTimeout:10000, perMessageDeflate:false,
         });

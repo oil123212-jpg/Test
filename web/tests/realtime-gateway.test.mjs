@@ -192,10 +192,15 @@ test('session deletion terminates both sides and clears the cookie',async t=>{
   const closed=once(ws,'close');const res=await fetch(f.origin+'/api/realtime/session',{method:'DELETE',headers:{Origin:f.origin,Cookie:grant.cookie}});
   assert.equal(res.status,200);assert.match(res.headers.get('set-cookie'),/Max-Age=0/);await closed;
 });
-test('concurrency and hourly connection limits are server-side',async t=>{
-  const f=await setup(t,{maxConcurrent:1,hourlyLimit:1});const pair=await f.socket(await f.session());await until(()=>pair.events.find(e=>e.type==='ready'));
-  assert.equal((await f.session()).body.code,'SESSION_LIMIT');pair.ws.close();await once(pair.ws,'close');
-  assert.equal((await f.session()).body.code,'SESSION_LIMIT');
+test('authenticated users can open more than two concurrent and twenty hourly conversations',async t=>{
+  const f=await setup(t);
+  for(let i=0;i<21;i++){
+    const grant=await f.session();
+    assert.equal(grant.response.status,200);
+    const pair=await f.socket(grant);
+    await until(()=>pair.events.some(e=>e.type==='ready'));
+  }
+  assert.equal(f.providers.filter(socket=>socket.readyState===WebSocket.OPEN).length,21);
 });
 test('session ready timeout terminates a stalled handshake',async t=>{
   const f=await setup(t,{noAck:true,handshakeTimeoutMs:120});const p=await f.socket(await f.session());

@@ -37,7 +37,7 @@ provider.on('connection',socket=>{
   });
   socket.on('close',()=>timers.forEach(clearTimeout));
 });
-const server=createAppServer(undefined,{apiKey:'mock-provider-key-never-published',model:'mock-realtime',upstreamURL:`ws://127.0.0.1:${provider.address().port}`,hourlyLimit:200,maxConcurrent:4},{store});
+const server=createAppServer(undefined,{apiKey:'mock-provider-key-never-published',model:'mock-realtime',upstreamURL:`ws://127.0.0.1:${provider.address().port}`},{store});
 server.listen(Number(process.env.PORT||4173),'0.0.0.0');
 const close=()=>{for(const client of provider.clients)client.terminate();server.close(()=>provider.close(()=>process.exit(0)));setTimeout(()=>process.exit(0),2000).unref();};
 process.once('SIGTERM',close);process.once('SIGINT',close);
