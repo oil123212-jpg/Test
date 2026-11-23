@@ -9,7 +9,6 @@
 - 기존 OPENAI_API_KEY는 **Railway 서비스 Variables**에만 둡니다. 브라우저·VITE_*·소스·로그에는 넣지 않습니다.
 - OPENAI_REALTIME_MODEL: 미설정 시 gpt-realtime-2. 실제 계정의 사용 가능한 모델로 바꿀 수 있습니다.
 - OPENAI_REALTIME_VOICE: 미설정 시 marin.
-- REALTIME_MAX_SECONDS: 기본 120, 10~300 범위.
 - REALTIME_ACCESS_CODE: 선택. 공개 서비스에는 충분히 긴 테스트 접근 코드를 설정하는 것을 권장합니다. 설정하면 대화 화면에 입력란이 표시됩니다.
 - PUBLIC_APP_ORIGIN: 선택. 지정 시 https://test-production-a904.up.railway.app처럼 정확한 서비스 Origin을 사용합니다. 미설정 시 요청 Host와 브라우저 Origin이 일치해야 합니다.
 
@@ -23,15 +22,15 @@
 2. POST /api/realtime/session: 동일 Origin + JSON + 현재 정책 버전 + 명시적 외부 음성 전송 동의를 검증. 정책 버전은 realtime-voice-v2이며 화면에 없는 adultTest 항목을 전송하거나 요구하지 않습니다. 선택적 접근 코드 확인 후 짧은 일회용 권한 발급.
 3. HttpOnly/SameSite=Strict 쿠키와 일회용 token을 묶어 브라우저 WebSocket의 첫 start 메시지에서 확인. URL query에 token/제공자 키를 넣지 않음.
 4. Railway → wss://api.openai.com/v1/realtime?model=... 연결, Authorization 헤더로 서버 키 전달.
-5. session.update: 24kHz PCM input/output, server_vad(create_response:false, interrupt_response:true), audio 응답, 최대 출력 512 tokens, 한국어 안내. committed 이벤트마다 서버가 현재 생활표와 제안 빈도를 판단해 개별 instructions의 response.create를 전송. 중복 발화 확정과 취소 중 응답 겹침 방지.
+5. session.update: 24kHz PCM input/output, server_vad(create_response:false, interrupt_response:true), audio 응답, 모델이 지원하는 최대 출력 길이, 한국어 안내. committed 이벤트마다 서버가 현재 생활표와 제안 빈도를 판단해 개별 instructions의 response.create를 전송. 중복 발화 확정과 취소 중 응답 겹침 방지.
 6. 브라우저 AudioContext를 24kHz로 생성해 기기 샘플레이트 변환은 Web Audio에 맡김. AudioWorklet이 모노 PCM16 little-endian을 20ms(960바이트)씩 전송. 해당 포맷을 지원하지 않는 브라우저는 안내 후 중단.
-7. OpenAI response.output_audio.delta를 binary PCM으로 전달하고 브라우저에서 최대 8초까지 재생 대기. 마이크 echoCancellation/noiseSuppression을 활성화함.
+7. OpenAI response.output_audio.delta를 binary PCM으로 전달하고 브라우저에서 수신 순서대로 예약 재생. 마이크 echoCancellation/noiseSuppression을 활성화함.
 8. speech_started/응답 중단 시 재생 큐 제거. 수동 중단은 response.cancel 전송. 정확한 청취 길이 기반 conversation.item.truncate는 이 초기 구현에 포함하지 않음.
 9. DELETE /api/realtime/session은 자신의 일회용 session token 범위에서 연결을 정리. 늦게 도착한 이전 세션 삭제가 새 세션을 종료하지 않도록 처리.
 
 ## 비용·접근·개인정보 경계
 
-- 기본 동시 연결 2개, 서버 인스턴스당 시간당 연결 시도 20회, 세션 최대 120초. admission 요청도 분당 40회 제한.
+- 기본 동시 연결 2개, 서버 인스턴스당 시간당 연결 시도 20회. admission 요청도 분당 40회 제한.
 - 이 제한은 **인스턴스 메모리** 기반이므로 재시작 때 초기화되고 여러 replica가 공유하지 않습니다. 전역 금액 한도를 보장하지 않습니다.
 - 체험 로그인은 계정 인증이 아닙니다. 공개 URL에서 비용을 보호하려면 REALTIME_ACCESS_CODE를 설정하고, 향후 실제 계정/공유 사용량 제한을 구현하세요.
 - 서버가 허용하는 클라이언트 명령은 start, cancel, clear, end, 검증된 life_guide.update/profile.update와 제한된 binary PCM뿐입니다. 모델/자유 형식 프롬프트/임의 provider event를 브라우저에서 지정할 수 없습니다.

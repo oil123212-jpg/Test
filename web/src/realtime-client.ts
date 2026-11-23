@@ -11,14 +11,12 @@ export const realtimeErrors: Record<string, string> = {
   API_RATE_LIMIT:'API 요청 한도에 도달했어요. 잠시 후 다시 시도해 주세요.',
   MODEL_UNAVAILABLE:'Railway의 OPENAI_REALTIME_MODEL에 사용 가능한 모델을 설정해 주세요.',
   SESSION_LIMIT:'동시 대화 또는 시간당 이용 한도에 도달했어요. 잠시 후 다시 시도해 주세요.',
-  SESSION_EXPIRED:'대화 시간이 끝났어요. 다시 시작할 수 있어요.',
   ACCESS_DENIED:'이용 코드가 맞지 않아요.',
   CONSENT_REQUIRED:'실시간 음성 전송 안내에 먼저 동의해 주세요.',
   INVALID_LIFE_GUIDE:'생활 시간 설정을 확인한 뒤 다시 대화해 주세요.',
   INVALID_PROFILE:'아이의 프로필을 확인한 뒤 다시 대화해 주세요.',
   CONNECT_TIMEOUT:'AI 연결 시간이 초과됐어요. 네트워크와 모델 설정을 확인해 주세요.',
   API_REQUEST_FAILED:'Realtime 세션 설정이 거부됐어요. 서버의 모델과 음성 설정을 확인해 주세요.',
-  AUDIO_LIMIT:'오디오 대기열 한도에 도달해 대화를 종료했어요.',
   MICROPHONE_DENIED:'마이크 접근을 허용해 주세요.',
   MICROPHONE_UNAVAILABLE:'마이크를 사용할 수 없어요. 장치와 브라우저를 확인해 주세요.',
   UNSUPPORTED_AUDIO:'이 브라우저에서 24kHz 실시간 오디오를 시작할 수 없어요.',
@@ -45,7 +43,7 @@ export class RealtimeConversation {
   async config() {
     const response = await fetch('/api/realtime/config', { cache:'no-store' });
     if (!response.ok) throw new Error('NETWORK_ERROR');
-    return response.json() as Promise<{available:boolean; requiresAccessCode:boolean; model:string; maxSeconds:number; policy:string}>;
+    return response.json() as Promise<{available:boolean; requiresAccessCode:boolean; model:string; policy:string}>;
   }
   private stopPlayback() {
     for (const [source, buffer] of this.sources) {
@@ -128,7 +126,7 @@ export class RealtimeConversation {
       node.port.onmessage = event => {
         const pcm = event.data.pcm as ArrayBuffer;
         if (!this.muted && generation === this.generation && socket.readyState === WebSocket.OPEN) {
-          if (socket.bufferedAmount > 96000) { new Uint8Array(pcm).fill(0); this.fail('AUDIO_LIMIT'); return; }
+          if (socket.bufferedAmount > 96000) { new Uint8Array(pcm).fill(0); this.fail('NETWORK_ERROR'); return; }
           socket.send(pcm); this.callbacks.level(event.data.peak);
         }
         new Uint8Array(pcm).fill(0);
@@ -145,7 +143,6 @@ export class RealtimeConversation {
     const context = this.context;
     if (!bytes.byteLength) return;
     if (!context || !this.gain || bytes.byteLength % 2 || bytes.byteLength > 1024*1024) { new Uint8Array(bytes).fill(0); return; }
-    if (Math.max(context.currentTime, this.nextTime)-context.currentTime+bytes.byteLength/48000 > 8) { new Uint8Array(bytes).fill(0); this.fail('AUDIO_LIMIT'); return; }
     const view = new DataView(bytes), buffer = context.createBuffer(1,bytes.byteLength/2,24000);
     const channel = buffer.getChannelData(0);
     for(let i=0;i<channel.length;i++) channel[i]=view.getInt16(i*2,true)/32768;

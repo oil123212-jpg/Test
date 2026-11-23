@@ -66,7 +66,7 @@ test('cancel while permission is pending cannot activate a late microphone',asyn
   await expect(page.locator('#realtime-status')).toHaveText('대화 준비');
 });
 test('missing key is explained without enabling microphone or leaking credentials',async({page})=>{
-  await page.route('**/api/realtime/config',route=>route.fulfill({json:{available:false,requiresAccessCode:false,model:'mock',maxSeconds:120,policy:REALTIME_POLICY}}));
+  await page.route('**/api/realtime/config',route=>route.fulfill({json:{available:false,requiresAccessCode:false,model:'mock',policy:REALTIME_POLICY}}));
   await page.goto('./');await expect(page.locator('#realtime-connect')).toBeDisabled();
   await expect(page.locator('#realtime-message')).toContainText('OPENAI_API_KEY');
   expect(await page.evaluate(()=>(window as any).__micCalls)).toBe(0);

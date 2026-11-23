@@ -197,13 +197,23 @@ test('concurrency and hourly connection limits are server-side',async t=>{
   assert.equal((await f.session()).body.code,'SESSION_LIMIT');pair.ws.close();await once(pair.ws,'close');
   assert.equal((await f.session()).body.code,'SESSION_LIMIT');
 });
-test('session ready timeout and hard lifetime terminate sessions',async t=>{
+test('session ready timeout terminates a stalled handshake',async t=>{
   const f=await setup(t,{noAck:true,handshakeTimeoutMs:120});const p=await f.socket(await f.session());
   await until(()=>p.events.find(e=>e.code==='CONNECT_TIMEOUT'));
 });
-test('hard lifetime stops an otherwise healthy connection',async t=>{
-  const f=await setup(t,{lifetimeMs:150});const p=await f.socket(await f.session());await until(()=>p.events.find(e=>e.type==='ready'));
-  await until(()=>p.events.find(e=>e.code==='SESSION_EXPIRED'));
+test('continuous PCM beyond the former two-minute budget reaches the client',async t=>{
+  const f=await setup(t);
+  const p=await f.socket(await f.session());
+  await until(()=>p.events.find(e=>e.type==='ready'));
+  assert.equal(f.messages.find(e=>e.type==='session.update').session.max_output_tokens,'inf');
+  const delta=Buffer.alloc(48000).toString('base64');
+  let received=0;
+  p.ws.on('message',(data,binary)=>{if(binary)received+=data.length;});
+  for(let i=0;i<13;i++){
+    for(let j=0;j<10;j++)f.providers[0].send(JSON.stringify({type:'response.output_audio.delta',response_id:'long',delta}));
+    await until(()=>received===(i+1)*10*48000);
+  }
+  assert.equal(p.ws.readyState,WebSocket.OPEN);
 });
 test('a delayed old-session DELETE cannot kill a newly started session',async t=>{
   const f=await setup(t);const first=await f.session();const a=await f.socket(first);await until(()=>a.events.find(e=>e.type==='ready'));

@@ -29,7 +29,6 @@ export function attachRealtime(server, options = {}) {
   const model = options.model ?? process.env.OPENAI_REALTIME_MODEL ?? 'gpt-realtime-2';
   const voice = options.voice ?? process.env.OPENAI_REALTIME_VOICE ?? 'marin';
   const accessCode = options.accessCode ?? process.env.REALTIME_ACCESS_CODE ?? '';
-  const maxSeconds = Math.max(10, Math.min(300, Number(options.maxSeconds ?? process.env.REALTIME_MAX_SECONDS) || 120));
   const maxSessions = options.maxConcurrent ?? 2;
   const hourlyLimit = options.hourlyLimit ?? 20;
   const upstreamURL = options.upstreamURL ?? `wss://api.openai.com/v1/realtime?model=${encodeURIComponent(model)}`;
@@ -58,7 +57,7 @@ export function attachRealtime(server, options = {}) {
     let path; try { path = new URL(req.url || '/', 'http://local').pathname; } catch { json(res,400,{code:'INVALID_REQUEST'}); return true; }
     if (!path.startsWith('/api/realtime')) return false;
     if (path === '/api/realtime/config' && req.method === 'GET') {
-      json(res, 200, { available: Boolean(apiKey), requiresAccessCode: Boolean(accessCode), model, maxSeconds, dialogueExampleCount, policy: REALTIME_POLICY }); return true;
+      json(res, 200, { available: Boolean(apiKey), requiresAccessCode: Boolean(accessCode), model, dialogueExampleCount, policy: REALTIME_POLICY }); return true;
     }
     if (path !== '/api/realtime/session') { json(res, 404, { code:'NOT_FOUND' }); return true; }
     if (!originAllowed(req)) { json(res, 403, { code:'ORIGIN_DENIED' }); return true; }
@@ -98,8 +97,8 @@ export function attachRealtime(server, options = {}) {
       const token = randomBytes(32).toString('hex');
       tickets.set(token, { owner, lifeGuide, profile, expires: Date.now() + 20000 });
       const secure = req.headers.origin?.startsWith('https:') ? '; Secure' : '';
-      res.setHeader('Set-Cookie', `momo_rt=${owner}; HttpOnly; SameSite=Strict; Path=/api/realtime; Max-Age=${maxSeconds + 60}${secure}`);
-      json(res, 200, { token, maxSeconds });
+      res.setHeader('Set-Cookie', `momo_rt=${owner}; HttpOnly; SameSite=Strict; Path=/api/realtime${secure}`);
+      json(res, 200, { token });
     } catch (error) { json(res, error.message === 'BODY_TOO_LARGE' ? 413 : 400, { code:'INVALID_REQUEST' }); }
     return true;
   }
@@ -112,17 +111,17 @@ export function attachRealtime(server, options = {}) {
   };
   server.on('upgrade', onUpgrade);
   function connect(client, req) {
-    let upstream, ready = false, finished = false, responseId = null, inputBytes = 0, outputBytes = 0;
+    let upstream, ready = false, finished = false, responseId = null;
     let planner, profile=null, responseInFlight = false, cancelRequested = false, pendingTurn = false;
     let turnInstructions, usedLookup = false;
     let guideUpdates = [];
     const committed = new Set();
     const cancelled = new Set();
-    let handshakeTimer, lifetimeTimer;
+    let handshakeTimer;
     const send = value => { if (client.readyState === WebSocket.OPEN) client.send(JSON.stringify(value)); };
     function finish(code) {
       if (finished) return;
-      finished = true; clearTimeout(handshakeTimer); clearTimeout(lifetimeTimer);
+      finished = true; clearTimeout(handshakeTimer);
       active.delete(client);
       if (code) send({ type:'error', code });
       if (upstream) { if (upstream.readyState === WebSocket.OPEN) upstream.close(); else upstream.terminate(); }
@@ -163,12 +162,11 @@ export function attachRealtime(server, options = {}) {
         active.get(client).token = auth.token;
         if (active.size > maxSessions || starts.length >= hourlyLimit) { finish('SESSION_LIMIT'); return; }
         starts.push(Date.now());
-        lifetimeTimer = setTimeout(() => finish('SESSION_EXPIRED'), options.lifetimeMs ?? maxSeconds * 1000);
         upstream = new WebSocket(upstreamURL, {
           headers: { Authorization:`Bearer ${apiKey}` }, maxPayload:1024 * 1024, handshakeTimeout:10000, perMessageDeflate:false,
         });
         upstream.on('open', () => upstreamSend({ type:'session.update', session: {
-          type:'realtime', output_modalities:['audio'], max_output_tokens:512,
+          type:'realtime', output_modalities:['audio'], max_output_tokens:'inf',
           instructions:buildSessionInstructions(profile), tools:[dialogueTool], tool_choice:'auto',
           audio: {
             input: { format:{type:'audio/pcm',rate:24000}, turn_detection:{type:'server_vad',threshold:0.5,prefix_padding_ms:300,silence_duration_ms:650,create_response:false,interrupt_response:true} },
@@ -180,7 +178,7 @@ export function attachRealtime(server, options = {}) {
           let event; try { event = JSON.parse(raw.toString()); } catch { finish('UPSTREAM_PROTOCOL'); return; }
           if (!event || typeof event !== 'object') { finish('UPSTREAM_PROTOCOL'); return; }
           if (event.type === 'session.updated' && !ready) {
-            ready = true; clearTimeout(handshakeTimer); send({type:'ready',maxSeconds});
+            ready = true; clearTimeout(handshakeTimer); send({type:'ready'});
           } else if (event.type === 'input_audio_buffer.speech_started') {
             if (responseInFlight) cancelResponse();
             send({type:'speech.started'});
@@ -197,8 +195,9 @@ export function attachRealtime(server, options = {}) {
           }
           else if (event.type === 'response.output_audio.delta' && !cancelled.has(event.response_id)) {
             if (typeof event.delta !== 'string') { finish('UPSTREAM_PROTOCOL'); return; }
-            const pcm = Buffer.from(event.delta, 'base64'); outputBytes += pcm.length;
-            if (!pcm.length || pcm.length % 2 || outputBytes > maxSeconds * 48000 || client.bufferedAmount > 512000) { finish('AUDIO_LIMIT'); return; }
+            const pcm = Buffer.from(event.delta, 'base64');
+            if (!pcm.length || pcm.length % 2) { finish('UPSTREAM_PROTOCOL'); return; }
+            if (client.bufferedAmount > 512000) { finish('NETWORK_ERROR'); return; }
             if (client.readyState === WebSocket.OPEN) client.send(pcm, {binary:true}, () => pcm.fill(0));
             else pcm.fill(0);
           } else if (event.type === 'response.done') {
@@ -238,8 +237,7 @@ export function attachRealtime(server, options = {}) {
       }
       if (binary) {
         if (!ready || !data.length || data.length % 2 || data.length > MAX_FRAME) { finish('INVALID_AUDIO'); return; }
-        inputBytes += data.length;
-        if (inputBytes > (maxSeconds + 5) * 48000 || upstream.bufferedAmount > 512000) { finish('AUDIO_LIMIT'); return; }
+        if (upstream.bufferedAmount > 512000) { finish('NETWORK_ERROR'); return; }
         upstreamSend({type:'input_audio_buffer.append',audio:data.toString('base64')});
         data.fill(0);
       } else {
