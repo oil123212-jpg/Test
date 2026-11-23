@@ -227,3 +227,43 @@ for (const [status,code] of [[401,'API_AUTH_FAILED'],[429,'API_QUOTA'],[404,'MOD
     assert.equal(f.providers.length,0);
   });
 }
+
+test('server handles a tagged DB lookup and continues the same turn once', async t => {
+  const f = await setup(t);
+  const {events} = await f.socket(await f.session(consentBody));
+  await until(() => events.some(e => e.type === 'ready'));
+  const provider = f.providers[0];
+  const emit = event => provider.send(JSON.stringify(event));
+  const creates = () => f.messages.filter(e => e.type === 'response.create');
+  assert.equal(f.messages[0].session.tools[0].name, 'lookup_examples');
+  emit({type:'input_audio_buffer.committed',item_id:'query-turn'});
+  await until(() => creates().length === 1);
+  emit({type:'response.created',response:{id:'lookup'}});
+  const done = {type:'response.done',response:{id:'lookup',status:'completed',output:[{
+    type:'function_call',call_id:'query1',name:'lookup_examples',
+    arguments:JSON.stringify({topic:'책과 이야기',intent:'발견'}),
+  }]}};
+  emit(done);
+  emit(done);
+  await until(() => creates().length === 2);
+  const results = f.messages.filter(e => e.type === 'conversation.item.create');
+  assert.equal(results.length,1);
+  assert.equal(results[0].item.call_id,'query1');
+  assert.match(JSON.parse(results[0].item.output).examples[0].scene,/책/);
+  assert.equal(creates()[1].response.instructions,creates()[0].response.instructions);
+  assert.equal(creates()[1].response.tool_choice,'none');
+  emit({type:'response.created',response:{id:'spoken'}});
+  emit({type:'response.done',response:{id:'spoken',status:'completed'}});
+  await until(() => events.some(e => e.type === 'response.done'));
+  assert.equal(events.filter(e => e.type === 'response.done').length,1);
+});
+
+test('unmatched tags, unknown tools and malformed lookup inputs return no examples', async () => {
+  const {lookupDialogue} = await import('../scripts/dialogue-examples.mjs');
+  for (const args of ['null','{',JSON.stringify({topic:'없는 주제',intent:'전체'}),
+    JSON.stringify({topic:'책과 이야기',intent:'없는 의도'})]) {
+    assert.deepEqual(lookupDialogue({name:'lookup_examples',arguments:args}),{examples:[]});
+  }
+  assert.deepEqual(lookupDialogue({name:'other',arguments:'{}'}),{examples:[]});
+  assert.equal(lookupDialogue({name:'lookup_examples',arguments:'{"topic":"책과 이야기","intent":"전체"}'}).examples.length,2);
+});

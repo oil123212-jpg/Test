@@ -4,6 +4,7 @@ import { emptyLifeGuide, parseLifeGuide, LifeGuidePlanner } from '../shared/life
 import { REALTIME_POLICY } from '../shared/realtime-policy.mjs';
 import { buildSessionInstructions, buildResponseInstructions } from './momo-prompt.mjs';
 import { parseChildProfile } from '../shared/child-profile.mjs';
+import { dialogueTool, lookupDialogue, dialogueExampleCount } from './dialogue-examples.mjs';
 export { REALTIME_POLICY };
 const MAX_FRAME = 16384;
 function safeEqual(a, b) {
@@ -57,7 +58,7 @@ export function attachRealtime(server, options = {}) {
     let path; try { path = new URL(req.url || '/', 'http://local').pathname; } catch { json(res,400,{code:'INVALID_REQUEST'}); return true; }
     if (!path.startsWith('/api/realtime')) return false;
     if (path === '/api/realtime/config' && req.method === 'GET') {
-      json(res, 200, { available: Boolean(apiKey), requiresAccessCode: Boolean(accessCode), model, maxSeconds, policy: REALTIME_POLICY }); return true;
+      json(res, 200, { available: Boolean(apiKey), requiresAccessCode: Boolean(accessCode), model, maxSeconds, dialogueExampleCount, policy: REALTIME_POLICY }); return true;
     }
     if (path !== '/api/realtime/session') { json(res, 404, { code:'NOT_FOUND' }); return true; }
     if (!originAllowed(req)) { json(res, 403, { code:'ORIGIN_DENIED' }); return true; }
@@ -113,6 +114,7 @@ export function attachRealtime(server, options = {}) {
   function connect(client, req) {
     let upstream, ready = false, finished = false, responseId = null, inputBytes = 0, outputBytes = 0;
     let planner, profile=null, responseInFlight = false, cancelRequested = false, pendingTurn = false;
+    let turnInstructions, usedLookup = false;
     let guideUpdates = [];
     const committed = new Set();
     const cancelled = new Set();
@@ -142,7 +144,9 @@ export function attachRealtime(server, options = {}) {
       if (!pendingTurn || responseInFlight || !ready || finished) return;
       pendingTurn = false; responseInFlight = true; cancelRequested = false;
       const cue = planner.nextCue(options.now?.() ?? new Date());
-      upstreamSend({type:'response.create',response:{instructions:buildResponseInstructions(cue,profile)}});
+      turnInstructions = buildResponseInstructions(cue,profile);
+      usedLookup = false;
+      upstreamSend({type:'response.create',response:{instructions:turnInstructions}});
     }
     client.on('message', (data, binary) => {
       if (finished) return;
@@ -165,7 +169,7 @@ export function attachRealtime(server, options = {}) {
         });
         upstream.on('open', () => upstreamSend({ type:'session.update', session: {
           type:'realtime', output_modalities:['audio'], max_output_tokens:512,
-          instructions:buildSessionInstructions(profile),
+          instructions:buildSessionInstructions(profile), tools:[dialogueTool], tool_choice:'auto',
           audio: {
             input: { format:{type:'audio/pcm',rate:24000}, turn_detection:{type:'server_vad',threshold:0.5,prefix_padding_ms:300,silence_duration_ms:650,create_response:false,interrupt_response:true} },
             output: { format:{type:'audio/pcm',rate:24000}, voice },
@@ -202,6 +206,20 @@ export function attachRealtime(server, options = {}) {
             responseId = null; responseInFlight = false; cancelRequested = false;
             if (cancelled.has(event.response?.id)) { respond(); return; }
             if (!['completed','cancelled'].includes(event.response?.status)) { finish('RESPONSE_FAILED'); return; }
+            const calls = event.response.status === 'completed'
+              ? (event.response.output ?? []).filter(item => item.type === 'function_call') : [];
+            if (calls.length && !pendingTurn && !usedLookup) {
+              usedLookup = true;
+              for (const [index, call] of calls.entries()) {
+                const result = index === 0 ? lookupDialogue(call) : {examples:[]};
+                upstreamSend({type:'conversation.item.create',item:{
+                  type:'function_call_output', call_id:call.call_id, output:JSON.stringify(result),
+                }});
+              }
+              responseInFlight = true;
+              upstreamSend({type:'response.create',response:{instructions:turnInstructions, tool_choice:'none'}});
+              return;
+            }
             send({type:'response.done'}); respond();
           } else if (event.type === 'error') {
             const code = event.error?.code;
