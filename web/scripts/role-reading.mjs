@@ -36,7 +36,7 @@ const books = {
     ['해설','옛이야기 속 환웅은 하늘에서 땅으로 내려왔어요. 어느 날 곰과 호랑이가 찾아왔어요.'],
     ['곰','환웅님, 저희도 사람이 될 수 있을까요?'],['환웅','이야기 속 동굴에서 쑥과 마늘을 먹으며 백 날을 지내 보렴.'],
     ['해설','동굴 속은 캄캄했어요. 호랑이는 곧 밖으로 뛰어나갔지요.'],
-    ['곰','나는 여기서 조금 더 기다려 볼래.'],['해설','스무 하루가 지나자 환웅이 곰에게 왔어요.'],
+    ['곰','나는 여기서 조금 더 기다려 볼래.'],['해설','스물하루가 지나자 환웅이 곰에게 왔어요.'],
     ['환웅','곰아, 네 소원이 이루어졌구나!'],['해설','사람이 된 곰은 웅녀라는 이름을 얻었어요. 훗날 웅녀와 환웅의 아들 단군은 고조선을 세웠답니다.'],
   ],
 };
@@ -51,7 +51,7 @@ export const readingTool = {
 };
 
 export function createReader() {
-  let book, role, index=0, last;
+  let book, selectedBook, role, index=0, last;
   function scene() {
     const rows=books[book], narration=[];
     while(index<rows.length && rows[index][0]!==role) narration.push(rows[index++]);
@@ -64,15 +64,18 @@ export function createReader() {
       let args;
       try { args=JSON.parse(raw); } catch { return {error:'배역과 책을 다시 확인해.'}; }
       if (!args || typeof args!=='object') return {error:'책과 배역을 물어봐.'};
-      if(args.action==='stop'){book=undefined;last=undefined;return {stopped:true};}
+      if(args.action==='stop'){book=undefined;selectedBook=undefined;last=undefined;return {stopped:true};}
       if(args.action==='choose'||args.action==='start'){
-        if(typeof args.book!=='string'||!Object.hasOwn(books,args.book)) return {titles:Object.keys(books)};
-        const roles=[...new Set(books[args.book].map(row=>row[0]))].filter(name=>name!=='해설');
-        if(args.action==='choose'||!roles.includes(args.role))return {title:args.book,roles};
-        book=args.book;role=args.role;index=0;return scene();
+        const title=args.book ?? (args.action==='start' ? selectedBook : undefined);
+        if(typeof title!=='string'||!Object.hasOwn(books,title)) return {titles:Object.keys(books)};
+        selectedBook=title;
+        const roles=[...new Set(books[title].map(row=>row[0]))].filter(name=>name!=='해설');
+        if(args.action==='choose'||!roles.includes(args.role))return {title,roles};
+        book=title;role=args.role;index=0;return scene();
       }
       if(!book||!last)return {titles:Object.keys(books)};
-      if(args.action==='repeat'||last.finished)return last;
+      if(args.action==='repeat')return last;
+      if(last.finished)return {...last,narration:[]};
       if(args.action==='solo'){role=null;return scene();}
       if(args.action==='next'){index++;return scene();}
       return {error:'현재 차례를 확인해.'};
