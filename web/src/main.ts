@@ -37,6 +37,7 @@ function updateConversationButtons() {
   for (const id of ['realtime-mute','realtime-interrupt']) $<HTMLButtonElement>(id).disabled = realtimeState === 'idle' || realtimeState === 'connecting';
 }
 const conversation = new RealtimeConversation({
+  readingCue(role,text){const cue=$('reading-cue');cue.hidden=!text;cue.textContent=text?role+' 차례 · '+text:'';},
   state(value) {
     realtimeState = value;
     const labels = { idle:'대화 준비', connecting:'연결 중', listening:'듣고 있어요', thinking:'답변 준비 중', speaking:'모모가 말하고 있어요' };

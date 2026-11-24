@@ -6,6 +6,7 @@ import { buildSessionInstructions, buildResponseInstructions } from './momo-prom
 import { parseChildProfile } from '../shared/child-profile.mjs';
 import { dialogueTool, lookupDialogue, dialogueExampleCount } from './dialogue-examples.mjs';
 import { classifyTopic, memoryHint } from '../shared/topic-memory.mjs';
+import { createReader, readingTool } from './role-reading.mjs';
 export { REALTIME_POLICY };
 const MAX_FRAME = 16384;
 function safeEqual(a, b) {
@@ -113,6 +114,7 @@ export function attachRealtime(server, options = {}) {
     let upstream, ready = false, finished = false, responseId = null;
     let planner, profile=null, responseInFlight = false, cancelRequested = false, pendingTurn = false;
     let previous=null;
+    const reader=createReader();
     let turnInstructions, usedLookup = false;
     let guideUpdates = [];
     const committed = new Set();
@@ -167,7 +169,7 @@ export function attachRealtime(server, options = {}) {
         });
         upstream.on('open', () => upstreamSend({ type:'session.update', session: {
           type:'realtime', output_modalities:['audio'], max_output_tokens:'inf',
-          instructions:buildSessionInstructions(profile), tools:[dialogueTool], tool_choice:'auto',
+          instructions:buildSessionInstructions(profile), tools:[dialogueTool,readingTool], tool_choice:'auto',
           audio: {
             input: { transcription:{model:'gpt-4o-mini-transcribe',language:'ko'}, format:{type:'audio/pcm',rate:24000}, turn_detection:{type:'server_vad',threshold:0.5,prefix_padding_ms:300,silence_duration_ms:650,create_response:false,interrupt_response:true} },
             output: { format:{type:'audio/pcm',rate:24000}, voice },
@@ -213,7 +215,11 @@ export function attachRealtime(server, options = {}) {
             if (calls.length && !pendingTurn && !usedLookup) {
               usedLookup = true;
               for (const [index, call] of calls.entries()) {
-                const result = index === 0 ? lookupDialogue(call) : {examples:[]};
+                let result={examples:[]};
+                if(index===0 && call.name===readingTool.name){
+                  result=reader.run(call.arguments);
+                  send({type:'reading.cue',text:reader.current()?.cue||'',role:reader.current()?.role||''});
+                } else if(index===0) result=lookupDialogue(call);
                 upstreamSend({type:'conversation.item.create',item:{
                   type:'function_call_output', call_id:call.call_id, output:JSON.stringify(result),
                 }});

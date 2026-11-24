@@ -3,7 +3,7 @@ import { emptyLifeGuide, type LifeGuide } from '../shared/life-guide.mjs';
 import { REALTIME_POLICY } from '../shared/realtime-policy.mjs';
 import { type ChildProfile } from '../shared/child-profile.mjs';
 export type ConversationState = 'idle' | 'connecting' | 'listening' | 'thinking' | 'speaking';
-interface Callbacks { state: (value: ConversationState) => void; error: (code: string) => void; level: (peak: number) => void; }
+interface Callbacks { readingCue?:(role:string,text:string)=>void; state: (value: ConversationState) => void; error: (code: string) => void; level: (peak: number) => void; }
 export { REALTIME_POLICY };
 export const realtimeErrors: Record<string, string> = {
   API_KEY_MISSING:'Railway의 OPENAI_API_KEY 설정이 필요해요.',
@@ -110,6 +110,7 @@ export class RealtimeConversation {
           if (generation !== this.generation) return;
           if (event.data instanceof ArrayBuffer) { this.playChunk(event.data); return; }
           let message; try { message=JSON.parse(event.data); } catch { this.fail('NETWORK_ERROR'); return; }
+          if(message.type==='reading.cue'){this.callbacks.readingCue?.(message.role,message.text);return;}
           if (message.type === 'memory.topic') {saveMemory(memory.epoch,{topic:message.topic,at:message.at});return;}
           if (message.type === 'ready') {
             // Capture edits made while HTTP admission or the provider handshake was pending.
@@ -179,7 +180,7 @@ export class RealtimeConversation {
     this.gain?.disconnect();this.gain=null;
     if(this.context){void this.context.close().catch(()=>{});this.context=null;}
     if(this.relayToken){const token=this.relayToken;this.relayToken=null;void fetch('/api/realtime/session',{method:'DELETE',headers:{'X-Realtime-Session':token},credentials:'same-origin',keepalive:true}).catch(()=>{});}
-    this.muted=false; this.callbacks.level(0); this.callbacks.state('idle');
+    this.callbacks.readingCue?.('',''); this.muted=false; this.callbacks.level(0); this.callbacks.state('idle');
     this.childProfile=null;
     // Only same-origin, short-lived relay sessions; no provider key is sent here.
   }
