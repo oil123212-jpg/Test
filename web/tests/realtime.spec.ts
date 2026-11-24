@@ -17,7 +17,7 @@ test('removed connection-summary card is absent and real conversation is present
   await page.goto('./');await expect(page.locator('.session-card')).toHaveCount(0);
   await expect(page.getByText('지금의 연결 상태',{exact:true})).toHaveCount(0);
   await expect(page.getByRole('heading',{name:'모모와 지금 이야기해요'})).toBeVisible();
-  await expect(page.locator('.realtime-consent')).toHaveText('대화 중 음성이 OpenAI로 실시간 전송되는 것에 동의합니다.');
+  await expect(page.locator('.realtime-consent')).toHaveText('음성을 OpenAI로 실시간 전송하고, 이 브라우저에 최근 대화 주제 하나를 최대 48시간 기억하는 데 동의합니다.');
   await expect(page.locator('.conversation-hint')).toHaveCount(0);
   expect(await page.evaluate(()=>(window as any).__micCalls)).toBe(0);
 });

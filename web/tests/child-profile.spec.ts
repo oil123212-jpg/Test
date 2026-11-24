@@ -56,5 +56,5 @@ test('stored profile reaches voice admission and live save/delete sends profile 
   await page.locator('#realtime-consent').check();await page.locator('#realtime-connect').click();await expect(page.locator('#realtime-status')).toHaveText('듣고 있어요');expect(admissions[0].profile).toMatchObject({name:'수아',age:4,interests:['animals','space']});
   await page.locator('#open-settings').click();await page.locator('#profile-age').selectOption('6');await page.locator('#profile-save').click();await expect.poll(()=>commands.filter(c=>c.type==='profile.update').at(-1)?.profile?.age).toBe(6);
   await page.locator('#profile-delete').click();await expect.poll(()=>commands.filter(c=>c.type==='profile.update').at(-1)?.profile).toBeNull();
-  await page.locator('#settings-close').click();await page.locator('#realtime-end').click();
+  await page.locator('#settings-close').click();await expect(page.locator('#realtime-end')).toBeDisabled();
 });

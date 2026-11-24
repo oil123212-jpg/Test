@@ -283,16 +283,16 @@ test('unmatched tags, unknown tools and malformed lookup inputs return no exampl
   assert.equal(lookupDialogue({name:'lookup_examples',arguments:'{"topic":"책과 이야기","intent":"전체"}'}).examples.length,2);
 });
 
-test('memory is opt-in and carries only a recognized topic into a later turn',async t=>{
+test('memory starts automatically and carries only a recognized topic into a later turn',async t=>{
   const f=await setup(t);
-  const first=await f.socket(await f.session({...consentBody,remember:true}));
+  const first=await f.socket(await f.session({...consentBody}));
   await until(()=>first.events.some(e=>e.type==='ready'));
   assert.equal(f.messages[0].session.audio.input.transcription.language,'ko');
   f.providers[0].send(JSON.stringify({type:'conversation.item.input_audio_transcription.completed',transcript:'민수랑 놀이터에 갔어'}));
   const saved=await until(()=>first.events.find(e=>e.type==='memory.topic'));
   assert.equal(saved.topic,'playground');
   assert.deepEqual(Object.keys(saved).sort(),['at','topic','type']);
-  const next=await f.socket(await f.session({...consentBody,remember:true,previous:saved}));
+  const next=await f.socket(await f.session({...consentBody,previous:saved}));
   await until(()=>next.events.some(e=>e.type==='ready'));
   f.providers[1].send(JSON.stringify({type:'input_audio_buffer.committed',item_id:'new'}));
   const reply=await until(()=>f.messages.find(e=>e.type==='response.create'));

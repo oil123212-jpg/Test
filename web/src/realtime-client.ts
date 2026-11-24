@@ -63,7 +63,7 @@ export class RealtimeConversation {
     this.lifeGuide = guide.enabled ? guide : emptyLifeGuide();
     if (this.socket?.readyState === WebSocket.OPEN) this.socket.send(JSON.stringify({type:'life_guide.update',lifeGuide:this.lifeGuide}));
   }
-  async start(inputDevice: string, outputDevice: string, volume: number, accessCode: string, lifeGuide = emptyLifeGuide(), profile:ChildProfile|null = null, remember=false) {
+  async start(inputDevice: string, outputDevice: string, volume: number, accessCode: string, lifeGuide = emptyLifeGuide(), profile:ChildProfile|null = null) {
     this.stop();
     this.lifeGuide = lifeGuide.enabled ? lifeGuide : emptyLifeGuide();
     this.childProfile=profile;
@@ -86,11 +86,11 @@ export class RealtimeConversation {
       stream.getTracks().forEach(track => { track.onended = () => this.fail('MICROPHONE_UNAVAILABLE'); });
       await context.audioWorklet.addModule(new URL('realtime-worklet.js', document.baseURI).href);
       if (controller.signal.aborted) return;
-      const memory=remember?openMemory():null;
+      const memory=openMemory();
       const response = await fetch('/api/realtime/session', {
         method:'POST', credentials:'same-origin', signal:controller.signal,
         headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({consent:true,policy:REALTIME_POLICY,accessCode,...(memory?{remember:true,previous:memory.memory}:{}),lifeGuide:this.lifeGuide,profile:this.childProfile}),
+        body:JSON.stringify({consent:true,policy:REALTIME_POLICY,accessCode,previous:memory.memory,lifeGuide:this.lifeGuide,profile:this.childProfile}),
       });
       const grant = await response.json();
       if (!response.ok) throw new Error(grant.code || 'NETWORK_ERROR');
@@ -110,7 +110,7 @@ export class RealtimeConversation {
           if (generation !== this.generation) return;
           if (event.data instanceof ArrayBuffer) { this.playChunk(event.data); return; }
           let message; try { message=JSON.parse(event.data); } catch { this.fail('NETWORK_ERROR'); return; }
-          if (message.type === 'memory.topic' && memory) {saveMemory(memory.epoch,{topic:message.topic,at:message.at});return;}
+          if (message.type === 'memory.topic') {saveMemory(memory.epoch,{topic:message.topic,at:message.at});return;}
           if (message.type === 'ready') {
             // Capture edits made while HTTP admission or the provider handshake was pending.
             socket.send(JSON.stringify({type:'life_guide.update',lifeGuide:this.lifeGuide}));

@@ -93,7 +93,7 @@ export function attachRealtime(server, options = {}) {
       // One pending ticket per browser; tickets are one-use and expire quickly.
       for (const [key, value] of tickets) if (value.owner === owner) tickets.delete(key);
       const token = randomBytes(32).toString('hex');
-      tickets.set(token, { owner, lifeGuide, profile, remember:body.remember===true, previous:body.remember===true && memoryHint(body.previous)?body.previous:null, expires: Date.now() + 20000 });
+      tickets.set(token, { owner, lifeGuide, profile, previous:memoryHint(body.previous)?body.previous:null, expires: Date.now() + 20000 });
       const secure = req.headers.origin?.startsWith('https:') ? '; Secure' : '';
       res.setHeader('Set-Cookie', `momo_rt=${owner}; HttpOnly; SameSite=Strict; Path=/api/realtime${secure}`);
       json(res, 200, { token });
@@ -112,7 +112,7 @@ export function attachRealtime(server, options = {}) {
     awaitingAuth.add(client);
     let upstream, ready = false, finished = false, responseId = null;
     let planner, profile=null, responseInFlight = false, cancelRequested = false, pendingTurn = false;
-    let remember=false, previous=null;
+    let previous=null;
     let turnInstructions, usedLookup = false;
     let guideUpdates = [];
     const committed = new Set();
@@ -160,7 +160,7 @@ export function attachRealtime(server, options = {}) {
         awaitingAuth.delete(client);
         tickets.delete(auth.token);
         planner = new LifeGuidePlanner(grant.lifeGuide, options.random ?? Math.random);
-        profile=grant.profile; remember=grant.remember; previous=grant.previous;
+        profile=grant.profile; previous=grant.previous;
         active.get(client).token = auth.token;
         upstream = new WebSocket(upstreamURL, {
           headers: { Authorization:`Bearer ${apiKey}` }, maxPayload:1024 * 1024, handshakeTimeout:10000, perMessageDeflate:false,
@@ -169,7 +169,7 @@ export function attachRealtime(server, options = {}) {
           type:'realtime', output_modalities:['audio'], max_output_tokens:'inf',
           instructions:buildSessionInstructions(profile), tools:[dialogueTool], tool_choice:'auto',
           audio: {
-            input: { ...(remember ? {transcription:{model:'gpt-4o-mini-transcribe',language:'ko'}} : {}), format:{type:'audio/pcm',rate:24000}, turn_detection:{type:'server_vad',threshold:0.5,prefix_padding_ms:300,silence_duration_ms:650,create_response:false,interrupt_response:true} },
+            input: { transcription:{model:'gpt-4o-mini-transcribe',language:'ko'}, format:{type:'audio/pcm',rate:24000}, turn_detection:{type:'server_vad',threshold:0.5,prefix_padding_ms:300,silence_duration_ms:650,create_response:false,interrupt_response:true} },
             output: { format:{type:'audio/pcm',rate:24000}, voice },
           },
         }}));
@@ -179,7 +179,7 @@ export function attachRealtime(server, options = {}) {
           if (!event || typeof event !== 'object') { finish('UPSTREAM_PROTOCOL'); return; }
           if (event.type === 'session.updated' && !ready) {
             ready = true; clearTimeout(handshakeTimer); send({type:'ready'});
-          } else if (remember && event.type === 'conversation.item.input_audio_transcription.completed') {
+          } else if (event.type === 'conversation.item.input_audio_transcription.completed') {
             const topic=classifyTopic(event.transcript);
             if(topic) send({type:'memory.topic',topic,at:Date.now()});
           } else if (event.type === 'input_audio_buffer.speech_started') {

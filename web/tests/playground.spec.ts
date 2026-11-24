@@ -52,7 +52,7 @@ test('policy links work before login and memory reset clears only this browser c
     expect(page.url()).toContain(path);
     await page.getByRole('link',{name:'모모로 돌아가기'}).click();
   }
-  await expect(page.locator('#remember-topic')).not.toBeChecked();
+  await expect(page.locator('#remember-topic')).toHaveCount(0);
   await context.addCookies([{name:'momo_topic',value:'sample',url:new URL(page.url()).origin}]);
   await page.locator('#open-settings').click();
   await page.locator('#forget-topic').click();

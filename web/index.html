@@ -29,8 +29,7 @@
         <section id="realtime-conversation" class="card conversation-card" aria-labelledby="conversation-title">
           <div class="card-heading"><div class="card-title"><span class="card-icon mint" data-icon="bubble"></span><div><h2 id="conversation-title">모모와 지금 이야기해요</h2><p>마이크로 말하면 모모가 목소리로 대답해요</p></div></div><span id="realtime-status" class="state-badge" role="status" aria-live="polite">연결 준비</span></div>
           <div class="conversation-stage"><div id="conversation-orb" class="conversation-orb"><img src="/momo-character.png" alt="손을 흔들며 인사하는 모모" width="1226" height="1283" fetchpriority="high" /></div><p id="realtime-message" role="status" aria-live="polite">서버 설정을 확인하고 있어요.</p></div>
-          <label class="realtime-consent"><input type="checkbox" id="realtime-consent" /><span>대화 중 음성이 OpenAI로 실시간 전송되는 것에 동의합니다.</span></label>
-          <label class="memory-control"><input type="checkbox" id="remember-topic"> <span>[선택] 이 브라우저에서 최근 대화 주제를 48시간 기억하고 다음 대화에 사용합니다. 공용 기기에서는 꺼 두세요.</span></label>
+          <label class="realtime-consent"><input type="checkbox" id="realtime-consent" /><span>음성을 OpenAI로 실시간 전송하고, 이 브라우저에 최근 대화 주제 하나를 최대 48시간 기억하는 데 동의합니다.</span></label>
           <div id="realtime-access-field" hidden><label class="field-label" for="realtime-access-code">이용 코드</label><input id="realtime-access-code" type="password" autocomplete="off" maxlength="128" placeholder="안내받은 이용 코드" /></div>
           <div class="conversation-actions"><button id="realtime-connect" class="primary-button" disabled><span data-icon="mic"></span>대화 시작</button><button id="realtime-mute" class="secondary-button" disabled aria-pressed="false">마이크 끄기</button><button id="realtime-interrupt" class="secondary-button" disabled><span data-icon="stop"></span>응답 중단</button><button id="realtime-end" class="text-button" disabled>대화 종료</button></div>
           <p class="privacy-footnote"><span data-icon="lock"></span>이 사이트는 음성 파일을 저장하지 않습니다. OpenAI의 데이터 처리·보관 조건은 별도로 적용됩니다.</p>
@@ -56,7 +55,7 @@
       <div class="consent-details">
         <h3>어떤 정보를 처리하나요?</h3><p>실시간 대화에서 선택한 마이크의 음성을 AI 응답 생성에 사용해요. 이 사이트는 전사문을 표시하거나 저장하지 않아요.</p>
         <h3>어디에, 얼마나 보관하나요?</h3><p>음성은 현재 탭의 메모리에만 임시 보관해요. 삭제, 이용 종료, 탭 비활성화 또는 페이지 종료 시 정리하며 파일이나 브라우저 저장소에 저장하지 않아요.</p>
-        <h3>외부로 보내나요?</h3><p>실시간 대화는 별도 동의 후 Railway를 거쳐 미국 OpenAI로 음성을 전송합니다. 기억을 선택하면 음성을 문자로 임시 변환해 최근에 언급한 주제 하나만 이 브라우저에 48시간 보관하고 다음 대화에 전달합니다. 설정에서 대화 기억을 초기화할 수 있어요. 제공자 데이터 처리 조건과 호스팅 접속 기록 정책은 별도로 적용됩니다.</p>
+        <h3>외부로 보내나요?</h3><p>실시간 대화는 별도 동의 후 Railway를 거쳐 미국 OpenAI로 음성을 전송합니다. 대화를 시작하면 음성을 문자로 임시 변환해 최근에 언급한 주제 하나만 이 브라우저에 48시간 보관하고 다음 대화에 전달합니다. 설정에서 대화 기억을 초기화할 수 있어요. 제공자 데이터 처리 조건과 호스팅 접속 기록 정책은 별도로 적용됩니다.</p>
         <h3>생활 시간 설정은요?</h3><p>체험 로그인 후 선택한 생활 시간표와 브라우저 구분용 식별자를 Railway PostgreSQL DB에 저장해요. 브라우저를 기억하는 쿠키는 최대 1년간 유지되며 시간표는 직접 삭제할 때까지 남아요. 음성·대화 내용과 라이프가이드 연결 동의는 DB에 저장하지 않아요. 라이프가이드 연결을 켜면 대화 중 현재 생활 항목과 시간을 OpenAI에 전달해요. 라이프 가이드에서 시간표를 삭제할 수 있어요. 계정 인증 없이 이 브라우저를 구분하는 테스트용 로그인입니다.</p>
         <h3>아이 프로필은요?</h3><p>보호자가 입력한 별명, 3~6세 나이, 선택한 관심사를 PostgreSQL DB에 저장해요. 음성 대화 시 이 정보를 OpenAI에 전달해 답변을 맞춰요. 설정의 프로필 삭제로 지울 수 있으며 다른 브라우저와는 구분돼요. 입력하지 않아도 기본 음성 대화를 이용할 수 있어요.</p>
         <h3>동의하지 않으면 어떻게 되나요?</h3><p>실시간 대화는 사용할 수 없어요. 설정과 안내는 확인할 수 있어요. 이용 종료를 누르면 동의를 철회하고 임시 음성을 지울 수 있어요.</p>
