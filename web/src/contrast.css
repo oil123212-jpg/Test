@@ -97,3 +97,10 @@ dialog::backdrop { background:#0e2118cc; }
 .app-shell>main{flex:1;width:100%}
 .legal-footer{margin-top:auto;background:#20322c;color:#fcfff9;padding:24px clamp(18px,4vw,60px);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
 .legal-footer>span{font-weight:700}.legal-footer nav{display:flex;flex-wrap:wrap;gap:1.25rem}.legal-footer a{color:inherit;text-decoration:none;padding:8px 0}.legal-footer a:hover{text-decoration:underline}.legal-footer a:focus-visible{outline:2px solid #e0eda4;outline-offset:4px}
+
+.momo-state-line { display:flex;align-items:center;justify-content:center;gap:8px;max-width:100%; }
+.momo-state-line p { margin:0;color:#34483b; }
+.momo-state-face { width:40px;height:40px;flex:none;background:url('/momo-states.png') no-repeat 0 0 / 160px 40px; }
+.momo-state-line[data-state="listening"] .momo-state-face { background-position-x:-40px; }
+.momo-state-line[data-state="thinking"] .momo-state-face,.momo-state-line[data-state="connecting"] .momo-state-face { background-position-x:-80px; }
+.momo-state-line[data-state="speaking"] .momo-state-face { background-position-x:-120px; }

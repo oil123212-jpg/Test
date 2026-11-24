@@ -40,9 +40,10 @@ const conversation = new RealtimeConversation({
   readingCue(role,text){const cue=$('reading-cue');cue.hidden=!text;cue.textContent=text?role+' 차례 · '+text:'';},
   state(value) {
     realtimeState = value;
+    $('momo-state-line').dataset.state=value;
     const labels = { idle:'대화 준비', connecting:'연결 중', listening:'듣고 있어요', thinking:'답변 준비 중', speaking:'모모가 말하고 있어요' };
     $('realtime-status').textContent = labels[value];
-    $('realtime-message').textContent = value === 'idle' ? '대화 시작을 누르면 마이크를 연결해요.' : value === 'connecting' ? '마이크와 AI를 연결하고 있어요…' : value === 'listening' ? '편하게 말해 주세요. 말이 끝나면 모모가 대답해요.' : value === 'thinking' ? '잠깐만요, 대답을 준비하고 있어요.' : '모모의 대답을 듣고 있어요.';
+    $('realtime-message').textContent = value === 'idle' ? '대화 시작을 누르면 마이크를 연결해요.' : value === 'connecting' ? '마이크와 AI를 연결하고 있어요…' : value === 'listening' ? '네 차례야. 모모가 듣고 있어.' : value === 'thinking' ? '잠깐만, 모모가 생각하고 있어.' : '이번엔 모모가 이야기할게.';
     $('conversation-orb').classList.toggle('active',value === 'speaking' || value === 'listening');
     if(value === 'idle') { $('realtime-mute').textContent='마이크 끄기'; $('realtime-mute').setAttribute('aria-pressed','false'); }
     updateConversationButtons();
