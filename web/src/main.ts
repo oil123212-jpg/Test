@@ -1,3 +1,4 @@
+import { clearMemory } from './device-memory';
 import './style.css';
 import './mobile.css';
 import './profile.css';
@@ -48,7 +49,22 @@ const conversation = new RealtimeConversation({
   error(code) { const message=realtimeErrors[code] || realtimeErrors.UPSTREAM_UNAVAILABLE; $('realtime-message').textContent=message; $('realtime-status').textContent='연결 확인 필요'; toast(message,true); },
   level(peak) { $('conversation-orb').style.setProperty('--voice-scale',String(1+Math.min(.2,peak*.3))); },
 });
-const childProfile = mountChildProfile(profile => conversation.updateProfile(profile), () => {if(localAudioConsent)void lifeGuide.login();else openConsent();});
+const remember=$<HTMLInputElement>('remember-topic');
+const memoryChannel=typeof BroadcastChannel==='function'?new BroadcastChannel('momo-forget-topic'):null;
+function stopRemembering(){
+  conversation.stop();
+  remember.checked=false;
+}
+function forgetTopic(){
+  clearMemory(); stopRemembering(); memoryChannel?.postMessage('forget');
+  toast('이 브라우저의 대화 기억을 초기화했어요.');
+}
+if(memoryChannel) memoryChannel.onmessage=()=>{if(remember.checked)stopRemembering();};
+$('forget-topic').addEventListener('click',forgetTopic);
+remember.addEventListener('change',()=>{if(!remember.checked)forgetTopic();else if(conversation.active)conversation.stop();});
+const childProfile = mountChildProfile(profile => conversation.updateProfile(profile), () => {if(localAudioConsent)void lifeGuide.login();else openConsent();},()=>{
+  clearMemory(); if(remember.checked)stopRemembering(); memoryChannel?.postMessage('forget');
+});
 const lifeGuide = mountLifeGuide(guide => conversation.updateLifeGuide(guide), () => { if (localAudioConsent) void lifeGuide.login(); else openConsent(); }, (value,error) => childProfile.session(value,error));
 $('realtime-connect').addEventListener('click', () => {
   if(!requireAudioConsent()) return;
@@ -56,7 +72,7 @@ $('realtime-connect').addEventListener('click', () => {
   const code=$<HTMLInputElement>('realtime-access-code').value;
   if(requiresAccessCode && !code) { $<HTMLInputElement>('realtime-access-code').focus(); toast('이용 코드를 입력해 주세요.'); return; }
   conversation.stop();
-  void conversation.start($<HTMLSelectElement>('input-device').value,$<HTMLSelectElement>('output-device').value,volume,code,lifeGuide.current(),childProfile.current());
+  void conversation.start($<HTMLSelectElement>('input-device').value,$<HTMLSelectElement>('output-device').value,volume,code,lifeGuide.current(),childProfile.current(),remember.checked);
   $<HTMLInputElement>('realtime-access-code').value='';
 });
 $('realtime-end').addEventListener('click', () => conversation.stop());
@@ -86,6 +102,7 @@ function openConsent() {
   if (!consentDialog.open) consentDialog.showModal();
 }
 function endSession(message?: string) {
+  remember.checked=false;
   lifeGuide.logout();
   localAudioConsent = false;
   $<HTMLInputElement>('realtime-consent').checked = false;

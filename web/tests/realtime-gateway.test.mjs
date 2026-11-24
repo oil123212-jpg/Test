@@ -282,3 +282,28 @@ test('unmatched tags, unknown tools and malformed lookup inputs return no exampl
   assert.deepEqual(lookupDialogue({name:'other',arguments:'{}'}),{examples:[]});
   assert.equal(lookupDialogue({name:'lookup_examples',arguments:'{"topic":"책과 이야기","intent":"전체"}'}).examples.length,2);
 });
+
+test('memory is opt-in and carries only a recognized topic into a later turn',async t=>{
+  const f=await setup(t);
+  const first=await f.socket(await f.session({...consentBody,remember:true}));
+  await until(()=>first.events.some(e=>e.type==='ready'));
+  assert.equal(f.messages[0].session.audio.input.transcription.language,'ko');
+  f.providers[0].send(JSON.stringify({type:'conversation.item.input_audio_transcription.completed',transcript:'민수랑 놀이터에 갔어'}));
+  const saved=await until(()=>first.events.find(e=>e.type==='memory.topic'));
+  assert.equal(saved.topic,'playground');
+  assert.deepEqual(Object.keys(saved).sort(),['at','topic','type']);
+  const next=await f.socket(await f.session({...consentBody,remember:true,previous:saved}));
+  await until(()=>next.events.some(e=>e.type==='ready'));
+  f.providers[1].send(JSON.stringify({type:'input_audio_buffer.committed',item_id:'new'}));
+  const reply=await until(()=>f.messages.find(e=>e.type==='response.create'));
+  assert.match(reply.response.instructions,/지난 대화 주제: 놀이터/);
+  assert.ok(!reply.response.instructions.includes('민수'));
+});
+
+test('memory expires at 48 hours and rejects arbitrary text',async()=>{
+  const {memoryHint,memoryTTL}=await import('../shared/topic-memory.mjs');
+  const at=100;
+  assert.ok(memoryHint({topic:'blocks',at},at+memoryTTL-1));
+  for(const data of [{topic:'blocks',at},{topic:'unknown',at:at+1},{topic:{toString:0},at}])
+    assert.equal(memoryHint(data,at+memoryTTL),'');
+});

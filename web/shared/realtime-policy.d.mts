@@ -1,1 +1,1 @@
-export const REALTIME_POLICY: 'realtime-voice-v2';
+export const REALTIME_POLICY: 'realtime-voice-v3';

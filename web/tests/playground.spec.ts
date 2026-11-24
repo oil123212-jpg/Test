@@ -43,3 +43,18 @@ test('consent popup fits mobile and supports keyboard re-entry',async({page})=>{
   await page.locator('#consent-checkbox').focus();await page.keyboard.press('Space');await expect(page.locator('#consent-accept')).toBeEnabled();
   await page.locator('#consent-accept').click();await page.locator('#login-button').click();await page.locator('#login-button').click();await expect(page.locator('#consent-checkbox')).not.toBeChecked();
 });
+
+test('policy links work before login and memory reset clears only this browser cookie',async({page,context})=>{
+  await page.goto('./');
+  for(const [name,path] of [['이용약관','terms.html'],['개인정보 처리방침','privacy.html']]){
+    await page.getByRole('contentinfo').getByRole('link',{name}).click();
+    await expect(page.getByRole('heading',{name,exact:true})).toBeVisible();
+    expect(page.url()).toContain(path);
+    await page.getByRole('link',{name:'모모로 돌아가기'}).click();
+  }
+  await expect(page.locator('#remember-topic')).not.toBeChecked();
+  await context.addCookies([{name:'momo_topic',value:'sample',url:new URL(page.url()).origin}]);
+  await page.locator('#open-settings').click();
+  await page.locator('#forget-topic').click();
+  expect((await context.cookies()).some(c=>c.name==='momo_topic')).toBe(false);
+});

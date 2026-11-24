@@ -1,7 +1,7 @@
 import { INTERESTS, parseChildProfile, type ChildProfile } from '../shared/child-profile.mjs';
 import { mountIcons } from './icons';
 
-export function mountChildProfile(onChange:(profile:ChildProfile|null)=>void, requestLogin:()=>void) {
+export function mountChildProfile(onChange:(profile:ChildProfile|null)=>void, requestLogin:()=>void, onDeleted:()=>void) {
   const el = <T extends HTMLElement=HTMLElement>(id:string)=>document.getElementById(id) as T;
   const name=el<HTMLInputElement>('profile-name'),age=el<HTMLSelectElement>('profile-age'),status=el('profile-status');
   let profile:ChildProfile|null=null,loggedIn=false,busy=false,dirty=false,generation=0;
@@ -84,7 +84,7 @@ export function mountChildProfile(onChange:(profile:ChildProfile|null)=>void, re
   el('profile-delete').addEventListener('click',async()=>{
     if(busy||!loggedIn)return;
     const id=generation;busy=true;controls();
-    try {await api('DELETE');if(id!==generation)return;profile=null;onChange(null);render();channel?.postMessage('changed');status.textContent='프로필을 삭제했어요.';}
+    try {await api('DELETE');if(id!==generation)return;profile=null;onChange(null);onDeleted();render();channel?.postMessage('changed');status.textContent='프로필을 삭제했어요.';}
     catch(error){if(id===generation)status.textContent=message(error)+' 프로필 삭제는 완료하지 못했어요.';}
     finally {if(id===generation){busy=false;controls();}}
   });
