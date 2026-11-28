@@ -109,7 +109,7 @@ export function mountLifeGuide(onChange: (guide: LifeGuide) => void, requestLogi
       guide = saved.schedule ? parseLifeGuide({...saved.schedule,enabled:false}) : emptyLifeGuide();
       loggedIn = true; onChange(guide); render();
       onSession(true);
-      status.textContent = saved.schedule ? 'DB에서 생활 시간을 불러왔어요. 라이프가이드 연결은 직접 켜 주세요.' : '아직 저장한 생활 시간이 없어요. 시간을 선택해 DB에 저장해 주세요.';
+      status.textContent = saved.schedule ? 'DB에서 생활 시간을 불러왔어요. 라이프가이드 연결은 직접 켜 주세요.' : '아직 저장한 생활 시간이 없어요. 시간을 선택해 저장해 주세요.';
       if (pendingDraft) {
         renderDraft(pendingDraft); draftDirty = true;
         status.textContent = '선택한 시간을 유지했어요. 저장하고 적용을 눌러 주세요.';
