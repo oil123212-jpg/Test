@@ -26,6 +26,9 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - run: npm run build
       - run: npm run test:server
-      - run: node --test tests/account-postgres.test.mjs && npm run test:realtime
+      - run: timeout 45s node --test tests/account-postgres.test.mjs
+        env:
+          DATABASE_URL: postgres://postgres:momo_ci@127.0.0.1:5432/postgres
+      - run: npm run test:realtime
         env:
           DATABASE_URL: postgres://postgres:momo_ci@localhost:5432/postgres

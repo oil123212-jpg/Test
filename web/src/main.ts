@@ -272,5 +272,6 @@ route(); updateConversationButtons(); updateConsentButton();
 window.addEventListener('pageshow',e=>{if(e.persisted)location.reload();});
 clearMemory();
 const oauthStatus=new URLSearchParams(location.search).get('login');
+if(oauthStatus==='ok')accountChannel?.postMessage('changed');
 if(oauthStatus){history.replaceState(null,'',location.pathname+location.hash);if(oauthStatus==='failed')toast('구글 로그인을 완료하지 못했어요.',true);}
 void restore(oauthStatus==='ok').catch(()=>{updateConsentButton();});

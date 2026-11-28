@@ -17,10 +17,11 @@ test('logged-in consent binds text logs to their owner, expiry, reset and logout
   assert.equal(await accounts.recording(req()),null);
   const name='t'+randomUUID(),password='test-account-passphrase';
   t.after(async()=>{
+    try {
     await pool.query('DELETE FROM momo_conversation_logs WHERE account_id IN (SELECT id FROM momo_accounts WHERE identity=$1)',['local:'+name]);
     await pool.query('DELETE FROM momo_account_sessions WHERE account_id IN (SELECT id FROM momo_accounts WHERE identity=$1)',['local:'+name]);
     await pool.query('DELETE FROM momo_accounts WHERE identity=$1',['local:'+name]);
-    await pool.end();server.closeAllConnections();await new Promise(ok=>server.close(ok));
+    } finally { await pool.end();server.closeAllConnections();await new Promise(ok=>server.close(ok)); }
   });
   const login=await request('register','POST',{username:name,password});
   assert.equal(login.status,200);cookie=login.headers.get('set-cookie').split(';')[0];
