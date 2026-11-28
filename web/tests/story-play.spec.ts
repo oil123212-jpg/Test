@@ -2,6 +2,10 @@ import { test, expect } from '@playwright/test';
 
 test('the rabbit turn stays silent and waits until the child taps, without microphone use', async ({page}) => {
   await page.addInitScript(() => {
+    // Mock the utterance together with the voice; native setters require a native voice.
+    Object.defineProperty(window, 'SpeechSynthesisUtterance', {value: class {
+      constructor(public text: string) {}
+    }});
     const spoken: string[] = [];
     Object.assign(window, { storySpoken: spoken });
     Object.defineProperty(window, 'speechSynthesis', {value: {
