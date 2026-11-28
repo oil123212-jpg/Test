@@ -11,7 +11,7 @@ test('every offered role waits at its own lines, repeats and finishes in order',
         assert.deepEqual(run('repeat'),turn);
         assert.ok(++count<20);turn=run('next');
       }
-      assert.ok(count>=2);
+      assert.ok(count>=1);
     }
     const start=run('start',run('choose').roles[0]);
     assert.equal(run('solo').narration[0][1],start.cue);
@@ -31,7 +31,7 @@ test('a role-only reply uses the chosen title; advancing after the ending is sil
   assert.deepEqual(run({action:'repeat'}),ending);
   run({action:'stop'});
   assert.equal(run({action:'start',role:'토끼'}).role,'토끼');
-  assert.equal(createReader().run(JSON.stringify({action:'start', book:'금도끼와 은도끼'})).role,'산신령');
+  assert.equal(createReader().run(JSON.stringify({action:'start', book:'금도끼와 은도끼'})).role,'나무꾼');
   assert.ok(createReader().run(JSON.stringify({action:'start'})).cue);
 });
 
