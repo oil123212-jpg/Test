@@ -30,7 +30,9 @@ test('a role-only reply uses the chosen title; advancing after the ending is sil
   assert.deepEqual(run({action:'next'}).narration,[]);
   assert.deepEqual(run({action:'repeat'}),ending);
   run({action:'stop'});
-  assert.ok(run({action:'start',role:'토끼'}).titles);
+  assert.equal(run({action:'start',role:'토끼'}).role,'토끼');
+  assert.equal(createReader().run(JSON.stringify({action:'start', book:'금도끼와 은도끼'})).role,'산신령');
+  assert.ok(createReader().run(JSON.stringify({action:'start'})).cue);
 });
 
 test('unqualified requests announce a database title and immediately return its ordered lines',()=>{

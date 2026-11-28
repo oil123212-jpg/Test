@@ -10,8 +10,8 @@ export function createReader(books) {
   return {
     run(raw) {
       let args;
-      try { args=JSON.parse(raw); } catch { return {error:'배역과 책을 다시 확인해.'}; }
-      if (!args || typeof args!=='object') return {error:'책과 배역을 물어봐.'};
+      try { args=JSON.parse(raw); } catch { return {error:'책 읽기를 시작하지 못했어.'}; }
+      if (!args || typeof args!=='object') return {error:'책 읽기를 시작하지 못했어.'};
       if(args.action==='stop'){book=undefined;selectedBook=undefined;last=undefined;return {stopped:true};}
       if(args.action==='read'){
         const titles=Object.keys(books);
@@ -21,12 +21,14 @@ export function createReader(books) {
         return {...scene(),announceTitle:true};
       }
       if(args.action==='choose'||args.action==='start'){
-        const title=args.book ?? (args.action==='start' ? selectedBook : undefined);
+        const titles=Object.keys(books);
+        const title=args.book ?? (args.action==='start' ? selectedBook ??
+          titles.find(name => books[name].some(([speaker]) => speaker !== '해설' && (!args.role || speaker === args.role))) : undefined);
         if(typeof title!=='string'||!Object.hasOwn(books,title)) return {titles:Object.keys(books)};
         selectedBook=title;
         const roles=[...new Set(books[title].map(row=>row[0]))].filter(name=>name!=='해설');
-        if(args.action==='choose'||!roles.includes(args.role))return {title,roles};
-        book=title;role=args.role;index=0;return scene();
+        if(args.action==='choose'||!roles.length||(args.role && !roles.includes(args.role)))return {title,roles};
+        book=title;role=args.role ?? roles[0];index=0;return scene();
       }
       if(!book||!last)return {titles:Object.keys(books)};
       if(args.action==='repeat')return last;

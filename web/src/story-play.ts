@@ -40,7 +40,7 @@ export function mountStoryPlay(root: HTMLElement) {
   }
   function reset() {
     cancel(); run('stop'); turn = undefined; stage.hidden = true;
-    status.textContent = '등장인물을 고르고 시작해요.';
+    status.textContent = '역할극 시작을 누르면 바로 읽어요.';
   }
   function leave() {
     setupToken++; enabled = false;
@@ -51,7 +51,7 @@ export function mountStoryPlay(root: HTMLElement) {
   function chooseBook() {
     reset();
     const selection = run('choose', { book: book.value });
-    role.replaceChildren(new Option('등장인물 고르기', ''));
+    role.replaceChildren();
     if ('roles' in selection) for (const name of selection.roles) role.add(new Option(name, name));
     start.disabled = !role.value;
   }
