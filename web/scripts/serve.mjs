@@ -62,7 +62,7 @@ export function createAppServer(root = defaultRoot, realtimeOptions = {}, storag
       else reply(404, 'Not found');
     }
   });
-  const accounts = attachAccounts(server);
+  const accounts = storageOptions.accounts ?? attachAccounts(server);
   realtime = attachRealtime(server, {...realtimeOptions, accounts});
   storage = attachLifeGuideStorage(server, {...storageOptions, accounts});
   return server;

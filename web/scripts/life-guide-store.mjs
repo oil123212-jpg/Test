@@ -1,4 +1,3 @@
-import { createHash, randomBytes } from 'node:crypto';
 import pg from 'pg';
 import { parseLifeGuide } from '../shared/life-guide.mjs';
 import { parseChildProfile, PARENT_SETTINGS_POLICY } from '../shared/child-profile.mjs';
@@ -35,13 +34,7 @@ export function postgresLifeGuideStore(connectionString = process.env.DATABASE_U
     close: () => pool.end(),
   };
 }
-export function attachLifeGuideStorage(server, { store = postgresLifeGuideStore(), now = Date.now, accounts } = {}) {
-  const sessions = new Map();
-  let admissions = [];
-  const readCookie = (req, name) => new RegExp(`(?:^|;\\s*)${name}=([a-f0-9]{64})(?:;|$)`).exec(req.headers.cookie || '')?.[1];
-  const hash = value => createHash('sha256').update(value).digest('hex');
-  const prune = () => { for (const [key, session] of sessions) if (session.expires <= now()) sessions.delete(key); };
-  const timer = setInterval(prune,60000); timer.unref();
+export function attachLifeGuideStorage(server, { store = postgresLifeGuideStore(), accounts } = {}) {
   function json(res, status, value) { res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'}); res.end(JSON.stringify(value)); }
   function originAllowed(req) {
     try { const origin = new URL(req.headers.origin); return ['https:','http:'].includes(origin.protocol) && (process.env.PUBLIC_APP_ORIGIN ? origin.origin === new URL(process.env.PUBLIC_APP_ORIGIN).origin : origin.host === req.headers.host); }
@@ -59,81 +52,40 @@ export function attachLifeGuideStorage(server, { store = postgresLifeGuideStore(
       req.on('error',() => reject(new SyntaxError('INVALID_JSON')));
     });
   }
-  function identify(req) {
-    const token = readCookie(req,'momo_device_session'), device = readCookie(req,'momo_device');
-    const session = sessions.get(token);
-    if (!device || !session || session.expires <= now() || session.device !== hash(device)) return null;
-    return { ...session, token };
-  }
   async function handle(req,res) {
     let path;
     try { path = new URL(req.url || '/', 'http://local').pathname; } catch { return false; }
     if (path !== '/api/life-guide' && !path.startsWith('/api/life-guide/')) return false;
     if (path === '/api/life-guide/config' && req.method === 'GET') { json(res,200,{available:Boolean(store),policy:STORAGE_POLICY}); return true; }
-    if (!['/api/life-guide','/api/life-guide/profile','/api/life-guide/login','/api/life-guide/logout'].includes(path)) { json(res,404,{code:'NOT_FOUND'}); return true; }
+    if (!['/api/life-guide','/api/life-guide/profile'].includes(path)) { json(res,404,{code:'NOT_FOUND'}); return true; }
     if (req.method !== 'GET' && !originAllowed(req)) { json(res,403,{code:'ORIGIN_DENIED'}); return true; }
     if (req.method === 'GET' && req.headers['sec-fetch-site'] === 'cross-site') { json(res,403,{code:'ORIGIN_DENIED'}); return true; }
     try {
-      let accountSession;
-      if (accounts) {
-        const who = await accounts.session(req);
-        if (!who || !who.consent) { json(res,who?403:401,{code:who?'CONSENT_REQUIRED':'LOGIN_REQUIRED'}); return true; }
-        if (path.endsWith('/login') || path.endsWith('/logout')) { json(res,410,{code:'USE_ACCOUNT_LOGIN'}); return true; }
-        accountSession = {device:who.id};
-      }
-      if (path === '/api/life-guide/logout' && req.method === 'POST') {
-        const session = identify(req);
-        // Target a specific login so a delayed logout cannot revoke a later one.
-        if (session && req.headers['x-device-session'] === session.token) {
-          sessions.delete(session.token);
-        }
-        json(res,200,{ended:true}); return true;
-      }
+      const account = await accounts.session(req);
+      if (!account) { json(res,401,{code:'LOGIN_REQUIRED'});return true; }
+      if (!account.consent) {json(res,403,{code:'CONSENT_REQUIRED'});return true;}
       if (!store) { json(res,503,{code:'DATABASE_NOT_CONFIGURED'}); return true; }
-      if (path === '/api/life-guide/login' && req.method === 'POST') {
-        if (!req.headers['content-type']?.startsWith('application/json')) { json(res,415,{code:'JSON_REQUIRED'}); return true; }
-        const value = await body(req);
-        if (value?.consent !== true || value?.policy !== STORAGE_POLICY) { json(res,403,{code:'CONSENT_REQUIRED'}); return true; }
-        admissions = admissions.filter(time => time > now()-60000);
-        prune();
-        if(admissions.length >= 100 || sessions.size >= 1000) { json(res,429,{code:'SESSION_LIMIT'}); return true; }
-        admissions.push(now());
-        await store.ready();
-        const device = readCookie(req,'momo_device') || randomBytes(32).toString('hex');
-        const token = randomBytes(32).toString('hex');
-        const old = identify(req); if (old) sessions.delete(old.token);
-        sessions.set(token,{device:hash(device),expires:now()+12*3600000});
-        const secure = req.headers.origin?.startsWith('https:') ? '; Secure' : '';
-        res.setHeader('Set-Cookie',[
-          `momo_device=${device}; HttpOnly; SameSite=Strict; Path=/api/life-guide; Max-Age=31536000${secure}`,
-          `momo_device_session=${token}; HttpOnly; SameSite=Strict; Path=/api/life-guide${secure}`,
-        ]);
-        json(res,200,{sessionId:token}); return true;
-      }
-      if (!['/api/life-guide','/api/life-guide/profile'].includes(path)) { json(res,405,{code:'METHOD_NOT_ALLOWED'}); return true; }
-      const session = accountSession ?? identify(req);
-      if (!session) { json(res,401,{code:'LOGIN_REQUIRED'}); return true; }
       if (path === '/api/life-guide/profile') {
-        if (req.method === 'GET') { const profile=await store.getProfile(session.device); json(res,200,{profile:profile ? parseChildProfile(profile) : null}); return true; }
+        if (req.method === 'GET') { const profile=await store.getProfile(account.id); json(res,200,{profile:profile ? parseChildProfile(profile) : null}); return true; }
         if (req.method === 'PUT') {
           if (!req.headers['content-type']?.startsWith('application/json')) {json(res,415,{code:'JSON_REQUIRED'});return true;}
           let profile; try {profile=parseChildProfile(await body(req));}catch {json(res,400,{code:'INVALID_PROFILE'});return true;}
-          await store.saveProfile(session.device,profile);json(res,200,{profile});return true;
+          await store.saveProfile(account.id,profile);json(res,200,{profile});return true;
         }
-        if (req.method === 'DELETE') {await store.deleteProfile(session.device);json(res,200,{deleted:true});return true;}
+        if (req.method === 'DELETE') {await store.deleteProfile(account.id);json(res,200,{deleted:true});return true;}
         json(res,405,{code:'METHOD_NOT_ALLOWED'});return true;
       }
       if (req.method === 'GET') {
-        const saved = await store.get(session.device);
+        const saved = await store.get(account.id);
         json(res,200,{schedule:saved ? parseSchedule(saved) : null}); return true;
       }
       if (req.method === 'PUT') {
         if (!req.headers['content-type']?.startsWith('application/json')) { json(res,415,{code:'JSON_REQUIRED'}); return true; }
         let schedule;
         try { schedule = parseSchedule(await body(req)); } catch { json(res,400,{code:'INVALID_SCHEDULE'}); return true; }
-        await store.save(session.device,schedule); json(res,200,{schedule}); return true;
+        await store.save(account.id,schedule); json(res,200,{schedule}); return true;
       }
-      if (req.method === 'DELETE') { await store.delete(session.device); json(res,200,{deleted:true}); return true; }
+      if (req.method === 'DELETE') { await store.delete(account.id); json(res,200,{deleted:true}); return true; }
       json(res,405,{code:'METHOD_NOT_ALLOWED'});
     } catch(error) {
       if (error instanceof SyntaxError || error.message === 'BODY_TOO_LARGE') json(res,400,{code:'INVALID_REQUEST'});
@@ -141,6 +93,6 @@ export function attachLifeGuideStorage(server, { store = postgresLifeGuideStore(
     }
     return true;
   }
-  server.once('close',() => {clearInterval(timer);sessions.clear();void Promise.resolve(store?.close()).catch(()=>{});});
+  server.once('close',() => {void Promise.resolve(store?.close()).catch(()=>{});});
   return {handle};
 }

@@ -106,7 +106,7 @@ export function attachRealtime(server, options = {}) {
       for (const [key, value] of tickets) if (value.owner === owner) tickets.delete(key);
       const token = randomBytes(32).toString('hex');
       const recorder = await options.accounts?.recording(req);
-      tickets.set(token, { owner, lifeGuide, profile, recorder, previous:options.accounts ? recorder?.previous : memoryHint(body.previous)?body.previous:null, expires: Date.now() + 20000 });
+      tickets.set(token, { owner, lifeGuide, profile, recorder, previous:recorder?.previous ?? null, expires: Date.now() + 20000 });
       const secure = req.headers.origin?.startsWith('https:') ? '; Secure' : '';
       res.setHeader('Set-Cookie', `momo_rt=${owner}; HttpOnly; SameSite=Strict; Path=/api/realtime${secure}`);
       json(res, 200, { token });

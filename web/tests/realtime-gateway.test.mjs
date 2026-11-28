@@ -283,7 +283,7 @@ test('unmatched tags, unknown tools and malformed lookup inputs return no exampl
   assert.equal(lookupDialogue({name:'lookup_examples',arguments:'{"topic":"책과 이야기","intent":"전체"}'}).examples.length,2);
 });
 
-test('memory starts automatically and carries only a recognized topic into a later turn',async t=>{
+test('anonymous turns cannot inject a remembered topic into a later session',async t=>{
   const f=await setup(t);
   const first=await f.socket(await f.session({...consentBody}));
   await until(()=>first.events.some(e=>e.type==='ready'));
@@ -296,7 +296,7 @@ test('memory starts automatically and carries only a recognized topic into a lat
   await until(()=>next.events.some(e=>e.type==='ready'));
   f.providers[1].send(JSON.stringify({type:'input_audio_buffer.committed',item_id:'new'}));
   const reply=await until(()=>f.messages.find(e=>e.type==='response.create'));
-  assert.match(reply.response.instructions,/지난 대화 주제: 놀이터/);
+  assert.doesNotMatch(reply.response.instructions,/지난 대화 주제: 놀이터/);
   assert.ok(!reply.response.instructions.includes('민수'));
 });
 
