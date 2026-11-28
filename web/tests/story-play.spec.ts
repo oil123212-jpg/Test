@@ -25,11 +25,15 @@ test('the rabbit turn stays silent and waits until the child taps, without micro
   await expect(page.locator('#story-speaker')).toHaveText('내 차례 · 토끼');
   const firstLine = await page.locator('#story-line').textContent();
   await page.getByRole('button', {name:'직접 넘기기'}).click();
-  await expect(page.locator('#story-line')).toContainText('나무 그늘');
+  await expect(page.locator('#story-line')).toContainText('달리기 경주를 하자');
   const spoken = await page.evaluate(() => (window as Window & {storySpoken?: string[]}).storySpoken);
-  expect(spoken).toHaveLength(3);
+  expect(spoken).toHaveLength(4);
   expect(spoken).not.toContain(firstLine);
   expect(spoken).not.toContain('MIC');
+  await page.getByRole('button', {name:'직접 넘기기'}).click();
+  await expect(page.locator('#story-line')).toContainText('어디에 있지');
+  await page.getByRole('button', {name:'직접 넘기기'}).click();
+  await expect(page.locator('#story-line')).toContainText('여기서 잠깐 쉬어야지');
   await page.getByRole('button', {name:'직접 넘기기'}).click();
   await expect(page.locator('#story-speaker')).toHaveText('이야기 끝!');
 });
@@ -65,8 +69,8 @@ test('local recognition advances after enough final words and aborts before the 
   const emit = (transcript: string, isFinal: boolean, index: number) => page.evaluate(
     ([t,f,i]) => (window as unknown as {emitStory(t:string,f:boolean,i:number):boolean}).emitStory(t,f,i),
     [transcript,isFinal,index] as const);
-  expect(await emit('나는 저 고개까지 깡충깡충 달려갈 수 있어', false, 0)).toBe(true);
-  expect(await emit('나는 저 엉뚱한 고개까지', true, 0)).toBe(true);
-  expect(await emit('달려갈 있어', true, 1)).toBe(false); // 5/7 ordered words
-  await expect(page.locator('#story-speaker')).toHaveText('모모 차례 · 거북이');
+  expect(await emit('거북아 너는 아주 느림보구나', false, 0)).toBe(true);
+  expect(await emit('거북아 너는', true, 0)).toBe(true);
+  expect(await emit('느림보구나', true, 1)).toBe(false); // 3/4 ordered words
+  await expect(page.locator('#story-speaker')).toHaveText('모모 차례 · 해설');
 });
