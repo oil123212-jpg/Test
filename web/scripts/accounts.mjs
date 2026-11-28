@@ -65,7 +65,12 @@ export function attachAccounts(server, connectionString=process.env.DATABASE_URL
     const row=attempts.get(key)||{count:0,until:now+60000};
     attempts.set(key,row);return ++row.count<=limit;
   }
-  const googleReady=()=>Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET && process.env.PUBLIC_APP_ORIGIN);
+  function googleOrigin() {
+    if (process.env.PUBLIC_APP_ORIGIN) return process.env.PUBLIC_APP_ORIGIN;
+    const domain = process.env.RAILWAY_PUBLIC_DOMAIN;
+    if (domain && /^[a-z0-9-]+(?:\.[a-z0-9-]+)+$/i.test(domain)) return 'https://' + domain;
+  }
+  const googleReady=()=>Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET && googleOrigin());
   async function handle(req,res) {
     const url=new URL(req.url,'http://local');
     if (!url.pathname.startsWith('/api/auth/'))return false;
@@ -91,14 +96,14 @@ export function attachAccounts(server, connectionString=process.env.DATABASE_URL
         const state=secret(), verifier=secret();
         states.set(state,{verifier,until:Date.now()+300000});
         res.setHeader('Set-Cookie','momo_oauth='+state+'; HttpOnly; SameSite=Lax; Path=/api/auth; Max-Age=300'+secure);
-        const params=new URLSearchParams({client_id:process.env.GOOGLE_CLIENT_ID,redirect_uri:origin+'/api/auth/google/callback',response_type:'code',scope:'openid',state,code_challenge:createHash('sha256').update(verifier).digest('base64url'),code_challenge_method:'S256'});
+        const params=new URLSearchParams({client_id:process.env.GOOGLE_CLIENT_ID,redirect_uri:googleOrigin()+'/api/auth/google/callback',response_type:'code',scope:'openid',state,code_challenge:createHash('sha256').update(verifier).digest('base64url'),code_challenge_method:'S256'});
         redirect('https://accounts.google.com/o/oauth2/v2/auth?'+params);return true;
       }
       if(action==='google/callback' && req.method==='GET'){
         const state=url.searchParams.get('state'),pending=states.get(state);
         if(!pending||pending.until<Date.now()||cookie(req,'momo_oauth')!==state||!googleReady()){redirect('/?login=failed');return true;}
         states.delete(state);
-        const response=await fetch('https://oauth2.googleapis.com/token',{method:'POST',signal:AbortSignal.timeout(8000),body:new URLSearchParams({code:url.searchParams.get('code')||'',client_id:process.env.GOOGLE_CLIENT_ID,client_secret:process.env.GOOGLE_CLIENT_SECRET,grant_type:'authorization_code',code_verifier:pending.verifier,redirect_uri:origin+'/api/auth/google/callback'})});
+        const response=await fetch('https://oauth2.googleapis.com/token',{method:'POST',signal:AbortSignal.timeout(8000),body:new URLSearchParams({code:url.searchParams.get('code')||'',client_id:process.env.GOOGLE_CLIENT_ID,client_secret:process.env.GOOGLE_CLIENT_SECRET,grant_type:'authorization_code',code_verifier:pending.verifier,redirect_uri:googleOrigin()+'/api/auth/google/callback'})});
         if(!response.ok){redirect('/?login=failed');return true;}
         const {access_token}=await response.json();
         const info=await fetch('https://openidconnect.googleapis.com/v1/userinfo',{signal:AbortSignal.timeout(8000),headers:{Authorization:'Bearer '+access_token}});

@@ -69,4 +69,4 @@ npm run test:server
 - Railway 설정 및 환경변수 목록: [Railway 배포 안내](../docs/railway_deployment.md)
 
 ## 계정 로그인
-Railway에서 DATABASE_URL을 설정하면 아이디 가입과 로그인이 활성화됩니다. Google Cloud에 웹 애플리케이션 OAuth 클라이언트를 만들고 승인된 리디렉션 URI를 `https://test-production-a904.up.railway.app/api/auth/google/callback`으로 등록합니다. Railway 서버 변수에 GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET 및 PUBLIC_APP_ORIGIN(경로와 끝 슬래시 없는 HTTPS 원점)을 설정합니다. 비밀값은 프런트엔드에 넣지 않습니다. 기존 브라우저별 데이터는 계정에 자동 연결하지 않습니다.
+Railway에서 DATABASE_URL을 설정하면 아이디 가입과 로그인이 활성화됩니다. Google Cloud에 웹 애플리케이션 OAuth 클라이언트를 만들고 승인된 리디렉션 URI를 `https://test-production-a904.up.railway.app/api/auth/google/callback`으로 등록합니다. Railway 서버 변수에 GOOGLE_CLIENT_ID와 GOOGLE_CLIENT_SECRET을 설정합니다. 콜백 주소는 Railway 공개 도메인으로 자동 구성되며, 직접 지정하려면 PUBLIC_APP_ORIGIN에 경로와 끝 슬래시 없는 HTTPS 원점을 설정합니다. 비밀값은 프런트엔드에 넣지 않습니다. 기존 브라우저별 데이터는 계정에 자동 연결하지 않습니다.
