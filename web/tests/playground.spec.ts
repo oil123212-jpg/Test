@@ -41,7 +41,7 @@ test('audio settings and help contain current voice controls',async({page})=>{
 });
 test('consent popup fits mobile and supports keyboard re-entry',async({page})=>{
   await page.goto('./');await page.locator('#login-button').click();expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
-  await credentials(page);await page.locator('#consent-checkbox').focus();await page.keyboard.press('Space');await expect(page.locator('#consent-accept')).toBeEnabled();
+  await credentials(page);await expect(page.locator('#consent-dialog')).toBeVisible();await page.locator('#consent-checkbox').focus();await page.keyboard.press('Space');await expect(page.locator('#consent-accept')).toBeEnabled();
   await page.locator('#consent-accept').click();await page.locator('#profile-skip').click();await page.locator('#login-button').click();await expect(page.locator('#login-button')).toHaveText('로그인');await expect(page.locator('#profile-name')).toHaveValue('');
 });
 

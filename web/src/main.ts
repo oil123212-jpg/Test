@@ -162,6 +162,8 @@ function openConsent() {
 function endSession(message?: string) {
   storyPlay.reset();
   lifeGuide.logout(); authenticated=false; clearMemory();
+  $<HTMLFormElement>('account-login-form').reset();
+  $('account-error').textContent='';
   localAudioConsent = false;
   $<HTMLInputElement>('realtime-consent').checked = false;
   $<HTMLInputElement>('realtime-access-code').value = '';
@@ -182,7 +184,7 @@ $('login-button').addEventListener('click', () => {
 });
 async function signOut(){
   conversation.stop();
-  try{await auth('logout',{});endSession();accountChannel?.postMessage('changed');location.replace(location.pathname+location.hash);}
+  try{await auth('logout',{});endSession();accountChannel?.postMessage('changed');}
   catch{toast('로그아웃을 완료하지 못했어요. 다시 시도해 주세요.',true);}
 }
 consentCheckbox.addEventListener('change', () => { consentAccept.disabled = !consentCheckbox.checked; });
