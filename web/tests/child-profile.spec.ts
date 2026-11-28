@@ -1,7 +1,7 @@
 import {test,expect,type Page} from '@playwright/test';
 test.skip(process.env.WEB_SERVER_TARGET!=='realtime','Requires production API fixture; use npm run test:realtime.');
 async function login(page:Page) {
-  await page.locator('#login-button').click();await page.locator('#consent-checkbox').check();await page.locator('#consent-accept').click();
+  await page.locator('#login-button').click();await page.locator('#login-continue').click();await page.locator('#consent-checkbox').check();await page.locator('#consent-accept').click();await page.locator('#profile-skip').click();
   await expect(page.locator('#life-guide-login')).toBeHidden();await expect(page.locator('#profile-status')).not.toContainText('불러오고 있어요');
   await expect(page.locator('#profile-save')).toBeEnabled();
 }
@@ -10,7 +10,7 @@ async function fill(page:Page,name='수아',age='4') {
   await page.getByRole('button',{name:'동물',exact:true}).click();await page.getByRole('button',{name:'우주',exact:true}).click();
 }
 test('profile is first in shared settings and supports 64 keyboard-accessible multi-select choices',async({page},info)=>{
-  await page.goto('./');await page.locator('#open-settings').click();
+  await page.goto('./');await login(page);await page.locator('#open-settings').click();
   await expect(page.getByRole('tab').first()).toHaveText('프로필 설정');await expect(page.locator('#profile-panel')).toBeVisible();await expect(page.locator('#audio-settings-panel')).toBeHidden();
   await expect(page.locator('.interest-button')).toHaveCount(64);await expect(page.locator('#profile-age option')).toHaveCount(5);
   await expect(page.locator('#profile-interest-options details')).toHaveCount(0);
@@ -40,10 +40,13 @@ test('SQL profile round trip survives relogin and deletion leaves the life sched
   expect((await(await page.request.get('/api/life-guide')).json()).schedule.slots.meal).toEqual([16]);
   await expect(page.locator('#profile-name')).toHaveValue('');
 });
-test('draft survives login from settings and failed SQL saves do not claim success',async({page})=>{
-  await page.goto('./');await page.locator('#open-settings').click();await fill(page);await page.locator('#profile-save').click();await expect(page.locator('#consent-dialog')).toBeVisible();
-  await page.locator('#consent-checkbox').check();await page.locator('#consent-accept').click();await expect(page.locator('#profile-status')).toContainText('입력한 내용을 유지');
-  await expect(page.locator('#profile-name')).toHaveValue('수아');
+test('profile entry follows consent and failed SQL saves do not claim success',async({page})=>{
+  await page.goto('./');await page.locator('#open-settings').click();
+  await expect(page.locator('#profile-name')).toBeHidden();
+  await page.locator('#profile-login').click();await page.locator('#login-continue').click();
+  await page.locator('#consent-checkbox').check();await page.locator('#consent-accept').click();
+  await expect(page.locator('#settings-title')).toHaveText('아이 정보 입력');
+  await fill(page);
   await page.route('**/api/life-guide/profile',route=>route.request().method()==='PUT'?route.fulfill({status:503,json:{code:'DATABASE_UNAVAILABLE'}}):route.continue());
   await page.locator('#profile-save').click();await expect(page.locator('#profile-status')).toContainText('기존 프로필은 유지');
   expect((await(await page.request.get('/api/life-guide/profile')).json()).profile).toBeNull();

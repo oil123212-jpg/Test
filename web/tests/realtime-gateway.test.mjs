@@ -324,3 +324,9 @@ test('a reading request returns the SQLite title and opening in the same spoken 
   const turn = JSON.parse(f.messages.find(e => e.type === 'conversation.item.create').item.output);
   assert.ok(creates()[1].response.instructions.endsWith([turn.book, ...turn.narration.map(row=>row[1])].join('\n')));
 });
+
+test('content expressions reflect the Korean utterance independently of microphone state',async()=>{
+  const {expressionFor}=await import('../scripts/realtime-gateway.mjs');
+  for (const [text,face] of [['자장가 불러줘','sleepy'],['노래 부르자','singing'],['무서워','listening'],['왜 그럴까','thinking'],['안녕 모모','hello'],['책 읽자','speaking'],['자동차','']])
+    assert.equal(expressionFor(text) ?? '', face);
+});

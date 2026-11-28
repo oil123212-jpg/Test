@@ -23,13 +23,13 @@
   </aside>
 
   <div class="app-shell">
-    <header class="topbar"><div class="breadcrumb">모모<span>/</span><strong id="page-name">대시보드</strong></div><div class="topbar-actions"><span class="local-badge"><span class="status-dot"></span>음성 대화</span><button id="open-settings" class="icon-button" aria-label="설정 열기" data-icon="settings"></button><button id="login-button" class="login-button" type="button" aria-haspopup="dialog" aria-controls="consent-dialog">체험 로그인</button></div></header>
+    <header class="topbar"><div class="breadcrumb">모모<span>/</span><strong id="page-name">대시보드</strong></div><div class="topbar-actions"><span class="local-badge"><span class="status-dot"></span>음성 대화</span><button id="open-settings" class="icon-button" aria-label="설정 열기" data-icon="settings"></button><button id="login-button" class="login-button" type="button" aria-haspopup="dialog" aria-controls="login-screen">체험 로그인</button></div></header>
     <main>
       <section id="overview-view" class="view">
-        <div class="page-heading"><div><p class="eyebrow">HELLO, LITTLE WORLD</p><h1>반가워요, 모모에요<span class="heading-spark" aria-hidden="true" data-icon="sparkles"></span></h1><p class="page-subtitle">작은 목소리가 편안하게 닿을 수 있도록, 함께 준비해 볼까요?</p></div></div>
+        <div class="page-heading welcome-heading"><img src="/momo-plush.png" alt="손을 흔드는 모모 인형" width="92" height="92" /><div><p class="eyebrow">HELLO, LITTLE WORLD</p><h1>반가워요, 모모에요<span class="heading-spark" aria-hidden="true" data-icon="sparkles"></span></h1><p class="page-subtitle">작은 목소리가 편안하게 닿을 수 있도록, 함께 준비해 볼까요?</p></div></div>
         <section id="realtime-conversation" class="card conversation-card" aria-labelledby="conversation-title">
           <div class="card-heading"><div class="card-title"><span class="card-icon mint" data-icon="bubble"></span><div><h2 id="conversation-title">모모와 지금 이야기해요</h2><p>마이크로 말하면 모모가 목소리로 대답해요</p></div></div><span id="realtime-status" class="state-badge" role="status" aria-live="polite">연결 준비</span></div>
-          <div class="conversation-stage"><div id="conversation-orb" class="conversation-orb"><img src="/momo-plush.png" alt="손을 흔들며 인사하는 모모 봉제 인형" width="600" height="600" fetchpriority="high" /></div><div class="momo-state-line" data-state="idle" id="momo-state-line"><span class="momo-state-face" aria-hidden="true"></span><p id="realtime-message" role="status" aria-live="polite">서버 설정을 확인하고 있어요.</p></div></div>
+          <div class="conversation-stage"><div id="conversation-orb" class="conversation-orb"><span id="conversation-face" data-face="hello" role="img" aria-label="인사하는 모모"></span></div><div class="momo-state-line" data-state="idle" id="momo-state-line"><p id="realtime-message" role="status" aria-live="polite">서버 설정을 확인하고 있어요.</p></div></div>
           <p id="reading-cue" role="status" hidden></p>
           <label class="realtime-consent"><input type="checkbox" id="realtime-consent" /><span>음성을 OpenAI로 실시간 전송하고, 이 브라우저에 최근 대화 주제 하나를 최대 48시간 기억하는 데 동의합니다.</span></label>
           <div id="realtime-access-field" hidden><label class="field-label" for="realtime-access-code">이용 코드</label><input id="realtime-access-code" type="password" autocomplete="off" maxlength="128" placeholder="안내받은 이용 코드" /></div>
@@ -74,9 +74,18 @@
     </main>
     <footer class="legal-footer"><span>모모</span><nav aria-label="서비스 이용 정보"><a href="./terms.html">이용약관</a><a href="./privacy.html"><strong>개인정보 처리방침</strong></a></nav></footer>
   </div>
+  <dialog id="login-screen" aria-labelledby="login-title">
+    <div class="login-card">
+      <button id="login-back" class="icon-button" aria-label="로그인 화면 닫기" data-icon="x"></button>
+      <span class="login-face" aria-hidden="true"></span>
+      <h2 id="login-title">모모에 로그인</h2>
+      <p>이 브라우저로 체험을 시작해요. 아이 프로필은 동의 후 입력할 수 있어요.</p>
+      <button id="login-continue" class="primary-button">브라우저로 체험 로그인</button>
+    </div>
+  </dialog>
   <dialog id="consent-dialog" aria-labelledby="consent-title" aria-describedby="consent-description">
     <form id="consent-form">
-      <div class="dialog-heading"><h2 id="consent-title">시작 전, 확인해 주세요</h2><button id="consent-close" type="button" class="icon-button" aria-label="동의 팝업 닫기" data-icon="x"></button></div>
+      <div class="dialog-heading"><h2 id="consent-title">개인정보 입력 및 이용 동의</h2><button id="consent-close" type="button" class="icon-button" aria-label="동의 팝업 닫기" data-icon="x"></button></div>
       <p id="consent-description" class="consent-description">성인이 가상의 정보로 사용하는 시연입니다. 실제 아동 음성이나 개인정보를 입력하지 마세요. 계정 정보를 입력하지 않는 브라우저 체험이에요.</p>
       <div class="consent-details">
         <h3>어떤 정보를 처리하나요?</h3><p>실시간 대화에서 선택한 마이크의 음성을 AI 응답 생성에 사용해요. 이 사이트는 전사문을 표시하거나 저장하지 않아요.</p>
@@ -89,14 +98,15 @@
       <p><a href="./terms.html">이용약관</a> · <a href="./privacy.html">개인정보 처리방침</a></p>
       <label class="consent-checkbox"><input id="consent-checkbox" type="checkbox" required /><span><strong>[필수] 위 안내를 확인하고 음성 대화, 아이 프로필과 생활 시간표 저장 기능 이용에 동의합니다.</strong></span></label>
       <p class="small-note consent-note">브라우저 마이크 권한은 별도로 요청해요. 이 동의는 보호자 본인·법정대리인 확인을 대신하지 않아요. 실시간 음성 전송 동의는 대화 화면에서 따로 선택해 주세요.</p>
-      <div class="consent-actions"><button id="consent-decline" type="button" class="secondary-button">동의하지 않음</button><button id="consent-accept" type="submit" class="primary-button" disabled>동의하고 체험 시작</button></div>
+      <div class="consent-actions"><button id="consent-decline" type="button" class="secondary-button">동의하지 않음</button><button id="consent-accept" type="submit" class="primary-button" disabled>동의하고 계속</button></div>
     </form>
   </dialog>
   <dialog id="settings-dialog" aria-labelledby="settings-title">
     <div class="dialog-heading"><h2 id="settings-title">설정</h2><button id="settings-close" type="button" class="icon-button" aria-label="설정 닫기" data-icon="x"></button></div>
     <div class="settings-tabs" role="tablist" aria-label="설정 종류"><button id="profile-tab" type="button" role="tab" aria-selected="true" aria-controls="profile-panel">프로필 설정</button><button id="audio-settings-tab" type="button" role="tab" aria-selected="false" aria-controls="audio-settings-panel" tabindex="-1">오디오 설정</button></div>
     <section id="profile-panel" role="tabpanel" aria-labelledby="profile-tab">
-      <form id="child-profile-form">
+      <button id="profile-login" class="primary-button" type="button">체험 로그인 후 아이 정보 입력</button>
+      <form id="child-profile-form" hidden>
         <label class="field-label" for="profile-name">부를 별명</label><input id="profile-name" name="child-name" type="text" maxlength="30" autocomplete="off" spellcheck="false" placeholder="실명 대신 별명을 입력해 주세요" required />
         <label class="field-label" for="profile-age">아이의 나이</label><select id="profile-age" name="child-age" required><option value="">나이 선택</option><option value="3">3세</option><option value="4">4세</option><option value="5">5세</option><option value="6">6세</option></select>
         <fieldset class="profile-interests"><legend>아이가 좋아하는 것 <span id="profile-interest-count">0개 선택</span></legend><div id="profile-interest-options"></div></fieldset>
@@ -104,6 +114,7 @@
         <div class="profile-actions"><button id="profile-save" type="submit" class="primary-button">프로필 저장</button><button id="profile-delete" type="button" class="secondary-button" disabled>프로필 삭제</button><button id="profile-reload" type="button" class="text-button" hidden>다시 불러오기</button></div>
         <p class="small-note profile-note">프로필은 이 브라우저별로 저장돼요. 음성 대화 시 모모가 이름·나이·관심사에 맞춰 답하도록 OpenAI에 전달돼요.</p>
       </form>
+      <button type="button" class="secondary-button" id="profile-skip" hidden>나중에 입력하기</button>
       <button type="button" class="secondary-button" id="forget-topic">대화 기억 초기화</button>
       <p class="small-note">이 브라우저의 기억을 지우고 진행 중인 대화를 종료합니다.</p>
     </section>

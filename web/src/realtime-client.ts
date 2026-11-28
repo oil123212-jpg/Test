@@ -3,7 +3,7 @@ import { emptyLifeGuide, type LifeGuide } from '../shared/life-guide.mjs';
 import { REALTIME_POLICY } from '../shared/realtime-policy.mjs';
 import { type ChildProfile } from '../shared/child-profile.mjs';
 export type ConversationState = 'idle' | 'connecting' | 'listening' | 'thinking' | 'speaking';
-interface Callbacks { readingCue?:(role:string,text:string)=>void; state: (value: ConversationState) => void; error: (code: string) => void; level: (peak: number) => void; }
+interface Callbacks { expression:(value:string)=>void; readingCue?:(role:string,text:string)=>void; state: (value: ConversationState) => void; error: (code: string) => void; level: (peak: number) => void; }
 export { REALTIME_POLICY };
 export const realtimeErrors: Record<string, string> = {
   API_KEY_MISSING:'Railway의 OPENAI_API_KEY 설정이 필요해요.',
@@ -110,6 +110,8 @@ export class RealtimeConversation {
           if (generation !== this.generation) return;
           if (event.data instanceof ArrayBuffer) { this.playChunk(event.data); return; }
           let message; try { message=JSON.parse(event.data); } catch { this.fail('NETWORK_ERROR'); return; }
+          if(message.type==='expression'){this.callbacks.expression(message.face);return;}
+          if(message.type==='speech.started')this.callbacks.expression('');
           if(message.type==='reading.cue'){this.callbacks.readingCue?.(message.role,message.text);return;}
           if (message.type === 'memory.topic') {saveMemory(memory.epoch,{topic:message.topic,at:message.at});return;}
           if (message.type === 'ready') {

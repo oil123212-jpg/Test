@@ -1,6 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import { REALTIME_POLICY } from '../shared/realtime-policy.mjs';
-async function localConsent(page:Page) {await page.locator('#login-button').click();await page.locator('#consent-checkbox').check();await page.locator('#consent-accept').click();}
+async function localConsent(page:Page) {await page.locator('#login-button').click();await page.locator('#login-continue').click();await page.locator('#consent-checkbox').check();await page.locator('#consent-accept').click();await page.locator('#profile-skip').click();}
 async function connect(page:Page) {await localConsent(page);await page.locator('#realtime-consent').check();await expect(page.locator('#realtime-connect')).toBeEnabled();await page.locator('#realtime-connect').click();}
 test.beforeEach(async({page})=>{
   await page.addInitScript(()=>{
@@ -23,7 +23,7 @@ test('removed connection-summary card is absent and real conversation is present
 });
 test('local and separate external-transmission consent are both required',async({page})=>{
   await page.goto('./');await expect(page.locator('#realtime-connect')).toBeEnabled();await page.locator('#realtime-connect').click();
-  await expect(page.locator('#consent-dialog')).toBeVisible();await page.locator('#consent-checkbox').check();await page.locator('#consent-accept').click();
+  await page.locator('#login-continue').click();await expect(page.locator('#consent-dialog')).toBeVisible();await page.locator('#consent-checkbox').check();await page.locator('#consent-accept').click();await page.locator('#profile-skip').click();
   await page.locator('#realtime-connect').click();await expect(page.locator('#toast')).toContainText('실시간 음성 전송');
   expect(await page.evaluate(()=>(window as any).__micCalls)).toBe(0);
 });

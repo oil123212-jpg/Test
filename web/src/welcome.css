@@ -1,0 +1,18 @@
+.welcome-heading {display:flex;align-items:center;gap:18px}
+.welcome-heading img {width:clamp(64px,9vw,100px);height:auto;object-fit:contain}
+#conversation-orb,#conversation-orb.active {width:clamp(168px,38vw,290px);height:auto;aspect-ratio:320/318;display:grid;place-items:stretch}
+#conversation-face,.login-face {display:block;background:url('/momo-expressions.png') 0 0 / 300% 200% no-repeat}
+#conversation-face[data-face=listening] {background-position:50% 0}
+#conversation-face[data-face=speaking] {background-position:100% 0}
+#conversation-face[data-face=thinking] {background-position:0 100%}
+#conversation-face[data-face=singing] {background-position:50% 100%}
+#conversation-face[data-face=sleepy] {background-position:100% 100%}
+#login-screen {width:min(94vw,560px);border:0;background:#a4dec0;padding:clamp(14px,3vw,32px)}
+.login-card {position:relative;padding:clamp(24px,5vw,50px);text-align:center;background:white;border-radius:20px;color:#194c3e}
+.login-card .login-face {width:140px;aspect-ratio:320/318;margin:0 auto 20px}
+.login-card h2 {font-size:1.65rem;margin:0 0 10px}
+.login-card p {line-height:1.65;margin:0 0 26px}
+#login-back {position:absolute;right:10px;top:10px}
+#login-continue {width:100%;background:#194c3e;color:white}
+#settings-dialog[data-onboarding] .settings-tabs,#settings-dialog[data-onboarding] #forget-topic,#settings-dialog[data-onboarding] #forget-topic+p {display:none}
+#profile-skip {width:100%;margin-top:12px}

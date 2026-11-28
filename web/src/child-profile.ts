@@ -1,7 +1,7 @@
 import { INTERESTS, parseChildProfile, type ChildProfile } from '../shared/child-profile.mjs';
 import { mountIcons } from './icons';
 
-export function mountChildProfile(onChange:(profile:ChildProfile|null)=>void, requestLogin:()=>void, onDeleted:()=>void) {
+export function mountChildProfile(onChange:(profile:ChildProfile|null)=>void, requestLogin:()=>void, onDeleted:()=>void, onSaved:()=>void) {
   const el = <T extends HTMLElement=HTMLElement>(id:string)=>document.getElementById(id) as T;
   const name=el<HTMLInputElement>('profile-name'),age=el<HTMLSelectElement>('profile-age'),status=el('profile-status');
   let profile:ChildProfile|null=null,loggedIn=false,busy=false,dirty=false,generation=0;
@@ -77,7 +77,7 @@ export function mountChildProfile(onChange:(profile:ChildProfile|null)=>void, re
     catch(error){status.textContent=message(error);return;}
     if(!loggedIn){requestLogin();return;}
     const id=generation;busy=true;controls();status.textContent='프로필을 저장하고 있어요…';
-    try {const result=await api('PUT',next);if(id!==generation)return;profile=parseChildProfile(result.profile);onChange(profile);render();channel?.postMessage('changed');status.textContent='프로필을 저장했어요. 다음 답변부터 적용해요.';}
+    try {const result=await api('PUT',next);if(id!==generation)return;profile=parseChildProfile(result.profile);onChange(profile);render();channel?.postMessage('changed');status.textContent='프로필을 저장했어요. 다음 답변부터 적용해요.';onSaved();}
     catch(error){if(id===generation)status.textContent=message(error)+' 기존 프로필은 유지해요.';}
     finally {if(id===generation){busy=false;controls();}}
   });

@@ -3,6 +3,7 @@ import './style.css';
 import './mobile.css';
 import './profile.css';
 import './contrast.css';
+import './welcome.css';
 import { mountIcons } from './icons';
 import { RealtimeConversation, realtimeErrors, type ConversationState } from './realtime-client';
 import { mountLifeGuide } from './life-guide';
@@ -37,10 +38,25 @@ function updateConversationButtons() {
   $<HTMLButtonElement>('realtime-end').disabled = realtimeState === 'idle';
   for (const id of ['realtime-mute','realtime-interrupt']) $<HTMLButtonElement>(id).disabled = realtimeState === 'idle' || realtimeState === 'connecting';
 }
+const faces = {hello:'인사하는', listening:'귀 기울이는', thinking:'생각하는', speaking:'이야기하는', singing:'노래하는', sleepy:'눈을 감은'};
+type Face = keyof typeof faces;
+let contentFace: Face | null = null;
+function showFace(state: ConversationState) {
+  const face = contentFace ?? ({idle:'hello', connecting:'thinking', listening:'listening', thinking:'thinking', speaking:'speaking'} as const)[state];
+  const element = $('conversation-face');
+  element.dataset.face = face;
+  element.setAttribute('aria-label', faces[face] + ' 모모');
+}
 const conversation = new RealtimeConversation({
+  expression(value) {
+    contentFace = Object.hasOwn(faces,value) ? value as Face : null;
+    showFace(realtimeState);
+  },
   readingCue(role,text){const cue=$('reading-cue');cue.hidden=!text;cue.textContent=text?role+' 차례 · '+text:'';},
   state(value) {
     realtimeState = value;
+    if (value === 'idle') contentFace = null;
+    showFace(value);
     $('momo-state-line').dataset.state=value;
     const labels = { idle:'대화 준비', connecting:'연결 중', listening:'듣고 있어요', thinking:'답변 준비 중', speaking:'모모가 말하고 있어요' };
     $('realtime-status').textContent = labels[value];
@@ -61,8 +77,8 @@ $('forget-topic').addEventListener('click',()=>{
   forgetTopic();
   toast('이 브라우저의 대화 기억을 초기화했어요.');
 });
-const childProfile = mountChildProfile(profile => conversation.updateProfile(profile), () => {if(localAudioConsent)void lifeGuide.login();else openConsent();},forgetTopic);
-const lifeGuide = mountLifeGuide(guide => conversation.updateLifeGuide(guide), () => { if (localAudioConsent) void lifeGuide.login(); else openConsent(); }, (value,error) => childProfile.session(value,error));
+const childProfile = mountChildProfile(profile => conversation.updateProfile(profile), () => {if(localAudioConsent)void lifeGuide.login();else openLogin();},forgetTopic,()=>{if(settingsDialog.dataset.onboarding) settingsDialog.close();});
+const lifeGuide = mountLifeGuide(guide => conversation.updateLifeGuide(guide), () => { if (localAudioConsent) void lifeGuide.login(); else openLogin(); }, (value,error) => childProfile.session(value,error));
 $('realtime-connect').addEventListener('click', () => {
   if(!requireAudioConsent()) return;
   if(!$<HTMLInputElement>('realtime-consent').checked) { $<HTMLInputElement>('realtime-consent').focus(); toast('실시간 음성 전송 안내에 동의해 주세요.'); return; }
@@ -90,9 +106,16 @@ const consentDialog = $<HTMLDialogElement>('consent-dialog');
 const consentCheckbox = $<HTMLInputElement>('consent-checkbox');
 const consentAccept = $<HTMLButtonElement>('consent-accept');
 function updateConsentButton() {
+  $('child-profile-form').hidden = !localAudioConsent;
+  $('profile-login').hidden = localAudioConsent;
   $('login-button').textContent = localAudioConsent ? '이용 종료' : '체험 로그인';
   $('login-button').setAttribute('aria-haspopup', localAudioConsent ? 'false' : 'dialog');
 }
+const loginDialog = $<HTMLDialogElement>('login-screen');
+function openLogin() { if (!loginDialog.open) loginDialog.showModal(); }
+$('login-continue').addEventListener('click',()=>{loginDialog.close();openConsent();});
+$('login-back').addEventListener('click',()=>loginDialog.close());
+$('profile-login').addEventListener('click',openLogin);
 function openConsent() {
   consentCheckbox.checked = false;
   consentAccept.disabled = true;
@@ -112,12 +135,12 @@ function endSession(message?: string) {
 }
 function requireAudioConsent() {
   if (localAudioConsent) return true;
-  openConsent();
+  openLogin();
   return false;
 }
 $('login-button').addEventListener('click', () => {
   if (localAudioConsent) endSession('이용을 종료하고 동의와 임시 음성을 정리했어요.');
-  else openConsent();
+  else openLogin();
 });
 consentCheckbox.addEventListener('change', () => { consentAccept.disabled = !consentCheckbox.checked; });
 $('consent-form').addEventListener('submit', event => {
@@ -126,7 +149,13 @@ $('consent-form').addEventListener('submit', event => {
   localAudioConsent = true;
   void lifeGuide.login();
   updateConsentButton(); consentDialog.close('accepted');
-  toast('동의를 확인했어요. 음성 전송 동의 후 대화 시작을 눌러 주세요.');
+  selectSettingsTab(0);
+  settingsDialog.dataset.onboarding = 'true';
+  $('settings-title').textContent = '아이 정보 입력';
+  $('profile-skip').hidden = false;
+  if (!settingsDialog.open) settingsDialog.showModal();
+  $('profile-name').focus();
+
 });
 function declineConsent() {
   consentDialog.close('declined');
@@ -142,6 +171,12 @@ $('reset-session').addEventListener('click', () => {
   conversation.setVolume(volume);toast('오디오 설정을 초기화했어요.');
 });
 const settingsDialog=$<HTMLDialogElement>('settings-dialog');
+$('profile-skip').addEventListener('click',()=>settingsDialog.close());
+settingsDialog.addEventListener('close',()=>{
+  delete settingsDialog.dataset.onboarding;
+  $('settings-title').textContent = '설정';
+  $('profile-skip').hidden = true;
+});
 const settingsTabs=[$('profile-tab'),$('audio-settings-tab')];
 function selectSettingsTab(index:number) {
   settingsTabs.forEach((tab,position)=>{const active=index===position;tab.setAttribute('aria-selected',String(active));tab.tabIndex=active?0:-1;$(tab.getAttribute('aria-controls')!).hidden=!active;});

@@ -1,3 +1,14 @@
+export function expressionFor(text) {
+  if (typeof text !== 'string') return null;
+  if (/자장가|졸려|졸리|잘래|잘 자|잘자|잠들|잠이 와/.test(text)) return 'sleepy';
+  if (/속상|슬퍼|무서|무섭|아파|울고/.test(text)) return 'listening';
+  if (/노래|동요|음악|흥얼/.test(text)) return 'singing';
+  if (/궁금|왜|어떻게|생각|수수께끼/.test(text)) return 'thinking';
+  if (/안녕|반가|고마워|신나/.test(text)) return 'hello';
+  if (/읽어|책 읽|이야기/.test(text)) return 'speaking';
+  return null;
+}
+
 import { randomBytes, timingSafeEqual } from 'node:crypto';
 import { WebSocket, WebSocketServer } from 'ws';
 import { emptyLifeGuide, parseLifeGuide, LifeGuidePlanner } from '../shared/life-guide.mjs';
@@ -182,6 +193,8 @@ export function attachRealtime(server, options = {}) {
           if (event.type === 'session.updated' && !ready) {
             ready = true; clearTimeout(handshakeTimer); send({type:'ready'});
           } else if (event.type === 'conversation.item.input_audio_transcription.completed') {
+            const face = expressionFor(event.transcript);
+            if(face) send({type:'expression',face});
             const topic=classifyTopic(event.transcript);
             if(topic) send({type:'memory.topic',topic,at:Date.now()});
           } else if (event.type === 'input_audio_buffer.speech_started') {

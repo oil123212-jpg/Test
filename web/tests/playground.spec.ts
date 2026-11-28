@@ -1,12 +1,12 @@
 import {test,expect,type Page} from '@playwright/test';
-async function consent(page:Page){await page.locator('#login-button').click();await page.locator('#consent-checkbox').check();await page.locator('#consent-accept').click();}
+async function consent(page:Page){await page.locator('#login-button').click();await page.locator('#login-continue').click();await page.locator('#consent-checkbox').check();await page.locator('#consent-accept').click();await page.locator('#profile-skip').click();}
 test.beforeEach(async({page})=>{
   await page.addInitScript(()=>{(window as any).__micCalls=0;const get=navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);navigator.mediaDevices.getUserMedia=async c=>{(window as any).__micCalls++;return get(c);};});
 });
 test('home shows generated Momo and the live conversation without starting the microphone',async({page},info)=>{
   const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));await page.goto('./');
   await expect(page.getByRole('heading',{name:'반가워요, 모모에요'})).toBeVisible();
-  const image=page.locator('#conversation-orb img');await expect(image).toBeVisible();
+  const image=page.locator('.welcome-heading img');await expect(image).toBeVisible();
   expect(await image.evaluate((e:HTMLImageElement)=>e.complete&&e.naturalWidth>0)).toBe(true);
   await expect(page.locator('#audio-lab,#try-demo,#record,[data-route="audio"],a[href="#audio"],.hero')).toHaveCount(0);
   await expect(page.locator('nav [data-route]')).toHaveCount(3);
@@ -20,9 +20,9 @@ test('removed audio and legacy routes return home without errors',async({page})=
   expect(errors).toEqual([]);
 });
 test('login consent remains explicit and cancellation resets it',async({page})=>{
-  await page.goto('./');await page.locator('#login-button').click();await expect(page.locator('#consent-accept')).toBeDisabled();
+  await page.goto('./');await page.locator('#login-button').click();await page.locator('#login-continue').click();await expect(page.locator('#consent-accept')).toBeDisabled();
   await page.locator('#consent-checkbox').check();await page.keyboard.press('Escape');await expect(page.locator('#consent-dialog')).toBeHidden();
-  await page.locator('#login-button').click();await expect(page.locator('#consent-checkbox')).not.toBeChecked();await expect(page.locator('#consent-accept')).toBeDisabled();
+  await page.locator('#login-button').click();await page.locator('#login-continue').click();await expect(page.locator('#consent-checkbox')).not.toBeChecked();await expect(page.locator('#consent-accept')).toBeDisabled();
   await page.locator('#consent-decline').click();await expect(page.locator('#login-button')).toHaveText('체험 로그인');
   expect(await page.evaluate(()=>(window as any).__micCalls)).toBe(0);
 });
@@ -40,8 +40,8 @@ test('audio settings and help contain current voice controls',async({page})=>{
 });
 test('consent popup fits mobile and supports keyboard re-entry',async({page})=>{
   await page.goto('./');await page.locator('#login-button').click();expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
-  await page.locator('#consent-checkbox').focus();await page.keyboard.press('Space');await expect(page.locator('#consent-accept')).toBeEnabled();
-  await page.locator('#consent-accept').click();await page.locator('#login-button').click();await page.locator('#login-button').click();await expect(page.locator('#consent-checkbox')).not.toBeChecked();
+  await page.locator('#login-continue').click();await page.locator('#consent-checkbox').focus();await page.keyboard.press('Space');await expect(page.locator('#consent-accept')).toBeEnabled();
+  await page.locator('#consent-accept').click();await page.locator('#profile-skip').click();await page.locator('#login-button').click();await page.locator('#login-button').click();await page.locator('#login-continue').click();await expect(page.locator('#consent-checkbox')).not.toBeChecked();
 });
 
 test('policy links work before login and memory reset clears only this browser cookie',async({page,context})=>{
