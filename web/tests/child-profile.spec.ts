@@ -57,8 +57,8 @@ test('stored profile reaches voice admission and live save/delete sends profile 
   await page.routeWebSocket('**/api/realtime',socket=>socket.onMessage(raw=>{if(typeof raw!=='string')return;const value=JSON.parse(raw);commands.push(value);if(value.type==='start')socket.send(JSON.stringify({type:'ready'}));}));
   page.on('request',request=>{if(request.url().endsWith('/api/realtime/session')&&request.method()==='POST')admissions.push(request.postDataJSON());});
   await page.goto('./');await login(page);await page.locator('#open-settings').click();await fill(page);await page.locator('#profile-save').click();await expect(page.locator('#profile-status')).toContainText('프로필을 저장했어요');await page.locator('#settings-close').click();
-  await page.locator('#realtime-consent').check();await page.locator('#realtime-connect').click();await expect(page.locator('#realtime-status')).toHaveText('듣고 있어요');expect(admissions[0].profile).toMatchObject({name:'수아',age:4,interests:['animals','space']});
+  await page.locator('#realtime-connect').click();await expect(page.locator('#realtime-status')).toHaveText('듣고 있어요');expect(admissions[0].profile).toMatchObject({name:'수아',age:4,interests:['animals','space']});
   await page.locator('#open-settings').click();await page.locator('#profile-age').selectOption('6');await page.locator('#profile-save').click();await expect.poll(()=>commands.filter(c=>c.type==='profile.update').at(-1)?.profile?.age).toBe(6);
   await page.locator('#profile-delete').click();await expect.poll(()=>commands.filter(c=>c.type==='profile.update').at(-1)?.profile).toBeNull();
-  await page.locator('#settings-close').click();await expect(page.locator('#realtime-end')).toBeDisabled();
+  await page.locator('#settings-close').click();await expect(page.locator('#realtime-connect')).toHaveAttribute('aria-pressed','false');
 });

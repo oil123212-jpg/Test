@@ -44,9 +44,12 @@ function fillDevices(devices: MediaDeviceInfo[]) {
   }
 }
 function updateConversationButtons() {
-  $<HTMLButtonElement>('realtime-connect').disabled = !realtimeAvailable || realtimeState !== 'idle';
-  $<HTMLButtonElement>('realtime-end').disabled = realtimeState === 'idle';
-  for (const id of ['realtime-mute','realtime-interrupt']) $<HTMLButtonElement>(id).disabled = realtimeState === 'idle' || realtimeState === 'connecting';
+  const button = $<HTMLButtonElement>('realtime-connect');
+  button.disabled = !realtimeAvailable;
+  const active = realtimeState !== 'idle';
+  button.setAttribute('aria-pressed', String(active));
+  button.title = active ? '대화 종료' : '대화 시작';
+  button.setAttribute('aria-label', button.title);
 }
 const faces = {hello:'인사하는', listening:'귀 기울이는', thinking:'생각하는', speaking:'이야기하는', singing:'노래하는', sleepy:'눈을 감은'};
 type Face = keyof typeof faces;
@@ -67,15 +70,12 @@ const conversation = new RealtimeConversation({
     realtimeState = value;
     if (value === 'idle') contentFace = null;
     showFace(value);
-    $('momo-state-line').dataset.state=value;
     const labels = { idle:'대화 준비', connecting:'연결 중', listening:'듣고 있어요', thinking:'답변 준비 중', speaking:'모모가 말하고 있어요' };
     $('realtime-status').textContent = labels[value];
-    $('realtime-message').textContent = value === 'idle' ? '대화 시작을 누르면 마이크를 연결해요.' : value === 'connecting' ? '마이크와 AI를 연결하고 있어요…' : value === 'listening' ? '네 차례야. 모모가 듣고 있어.' : value === 'thinking' ? '잠깐만, 모모가 생각하고 있어.' : '이번엔 모모가 이야기할게.';
     $('conversation-orb').classList.toggle('active',value === 'speaking' || value === 'listening');
-    if(value === 'idle') { $('realtime-mute').textContent='마이크 끄기'; $('realtime-mute').setAttribute('aria-pressed','false'); }
     updateConversationButtons();
   },
-  error(code) { const message=realtimeErrors[code] || realtimeErrors.UPSTREAM_UNAVAILABLE; $('realtime-message').textContent=message; $('realtime-status').textContent='연결 확인 필요'; toast(message,true); },
+  error(code) { const message=realtimeErrors[code] || realtimeErrors.UPSTREAM_UNAVAILABLE; $('realtime-status').textContent='연결 확인 필요'; toast(message,true); },
   level(peak) { $('conversation-orb').style.setProperty('--voice-scale',String(1+Math.min(.2,peak*.3))); },
 });
 const memoryChannel=typeof BroadcastChannel==='function'?new BroadcastChannel('momo-forget-topic'):null;
@@ -91,28 +91,19 @@ $('forget-topic').addEventListener('click',()=>{
 const childProfile = mountChildProfile(profile => conversation.updateProfile(profile), () => {if(localAudioConsent)void lifeGuide.login();else openLogin();},forgetTopic,()=>{if(settingsDialog.dataset.onboarding) settingsDialog.close();});
 const lifeGuide = mountLifeGuide(guide => conversation.updateLifeGuide(guide), () => { if (localAudioConsent) void lifeGuide.login(); else openLogin(); }, (value,error) => childProfile.session(value,error));
 $('realtime-connect').addEventListener('click', () => {
+  if(realtimeState !== 'idle') {conversation.stop();return;}
   if(!requireAudioConsent()) return;
-  if(!$<HTMLInputElement>('realtime-consent').checked) { $<HTMLInputElement>('realtime-consent').focus(); toast('실시간 음성 전송 안내에 동의해 주세요.'); return; }
   const code=$<HTMLInputElement>('realtime-access-code').value;
   if(requiresAccessCode && !code) { $<HTMLInputElement>('realtime-access-code').focus(); toast('이용 코드를 입력해 주세요.'); return; }
   conversation.stop();
   void conversation.start($<HTMLSelectElement>('input-device').value,$<HTMLSelectElement>('output-device').value,volume,code,lifeGuide.current(),childProfile.current());
   $<HTMLInputElement>('realtime-access-code').value='';
 });
-$('realtime-end').addEventListener('click', () => conversation.stop());
-$('realtime-interrupt').addEventListener('click', () => conversation.interrupt());
-$('realtime-mute').addEventListener('click', () => {
-  const muted=conversation.toggleMute(); $('realtime-mute').textContent=muted?'마이크 켜기':'마이크 끄기'; $('realtime-mute').setAttribute('aria-pressed',String(muted));
-});
-$<HTMLInputElement>('realtime-consent').addEventListener('change', event => {
-  if(!(event.target as HTMLInputElement).checked) conversation.stop();
-});
 void conversation.config().then(config => {
   realtimeAvailable=config.available; requiresAccessCode=config.requiresAccessCode;
   $('realtime-access-field').hidden=!requiresAccessCode;
-  $('realtime-message').textContent=config.available ? '별도 전송 동의 후 대화 시작을 눌러 주세요.' : 'Railway에 OPENAI_API_KEY를 설정하면 대화할 수 있어요.';
   $('realtime-status').textContent=config.available?'연결 준비':'키 설정 필요'; updateConversationButtons();
-}).catch(() => { $('realtime-message').textContent='대화 서버에 연결하지 못했어요. 잠시 후 새로고침해 주세요.'; });
+}).catch(() => { $('realtime-status').textContent='서버 연결 실패'; });
 const consentDialog = $<HTMLDialogElement>('consent-dialog');
 const consentCheckbox = $<HTMLInputElement>('consent-checkbox');
 const consentAccept = $<HTMLButtonElement>('consent-accept');
@@ -165,7 +156,6 @@ function endSession(message?: string) {
   $<HTMLFormElement>('account-login-form').reset();
   $('account-error').textContent='';
   localAudioConsent = false;
-  $<HTMLInputElement>('realtime-consent').checked = false;
   $<HTMLInputElement>('realtime-access-code').value = '';
   consentCheckbox.checked = false; consentAccept.disabled = true;
   conversation.stop(); fillDevices([]);
@@ -191,7 +181,7 @@ consentCheckbox.addEventListener('change', () => { consentAccept.disabled = !con
 $('consent-form').addEventListener('submit', async event => {
   event.preventDefault();
   if (!consentCheckbox.checked) { consentCheckbox.focus(); return; }
-  try{await auth('consent',{policy:'account-log-48h-v1',accepted:true});}
+  try{await auth('consent',{policy:'account-voice-log-48h-v2',accepted:true});}
   catch{toast('동의를 저장하지 못했어요. 다시 시도해 주세요.',true);return;}
   localAudioConsent = true;
   void lifeGuide.login();
@@ -205,7 +195,7 @@ $('consent-form').addEventListener('submit', async event => {
 
 });
 async function declineConsent() {
-  try{await auth('consent',{policy:'account-log-48h-v1',accepted:false});consentDialog.close('declined');await signOut();}
+  try{await auth('consent',{policy:'account-voice-log-48h-v2',accepted:false});consentDialog.close('declined');await signOut();}
   catch{toast('동의 여부를 저장하지 못했어요.',true);}
 }
 $('consent-decline').addEventListener('click', declineConsent);

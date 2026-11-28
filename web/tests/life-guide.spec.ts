@@ -42,7 +42,7 @@ test('DB unavailable does not claim successful login or block voice consent',asy
   await page.goto('./#life-guide');await page.locator('#life-guide-login').click();await credentials(page);await page.locator('#consent-checkbox').check();await page.locator('#consent-accept').click();await page.locator('#profile-skip').click();
   await expect(page.locator('#life-guide-save-status')).toContainText('DATABASE_URL');await expect(page.locator('#life-meal-time')).toBeEnabled();await expect(page.locator('#login-button')).toHaveText('로그아웃');
   await page.locator('#life-meal-time').selectOption('16');await expect(page.locator('#life-meal-selected')).toContainText('08:00–08:30');
-  await page.locator('[data-route="overview"]').click();await page.locator('#realtime-consent').check();await expect(page.locator('#realtime-connect')).toBeEnabled();
+  await page.locator('[data-route="overview"]').click();await expect(page.locator('#realtime-connect')).toBeEnabled();
 });
 test('different browser contexts keep schedules separate',async({page,browser})=>{
   await page.goto('./#life-guide');await login(page);await page.locator('#life-meal-time').selectOption('16');await page.locator('#life-guide-save').click();await expect(page.locator('#life-guide-save-status')).toContainText('DB에 저장했어요');

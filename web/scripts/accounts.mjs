@@ -3,7 +3,7 @@ import { promisify } from 'node:util';
 import pg from 'pg';
 import { classifyTopic } from '../shared/topic-memory.mjs';
 
-export const POLICY = 'account-log-48h-v1';
+export const POLICY = 'account-voice-log-48h-v2';
 const derive = promisify(scrypt);
 const secret = () => randomBytes(32).toString('hex');
 const digest = s => createHash('sha256').update(s).digest('hex');

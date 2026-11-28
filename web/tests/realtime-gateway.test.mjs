@@ -330,3 +330,20 @@ test('content expressions reflect the Korean utterance independently of micropho
   for (const [text,face] of [['자장가 불러줘','sleepy'],['노래 부르자','singing'],['무서워','listening'],['왜 그럴까','thinking'],['안녕 모모','hello'],['책 읽자','speaking'],['자동차','']])
     assert.equal(expressionFor(text) ?? '', face);
 });
+
+test('shared reading sends the child’s line in the normal voice conversation',async t=>{
+  const f=await setup(t);
+  const {events}=await f.socket(await f.session(consentBody));
+  await until(()=>events.some(e=>e.type==='ready'));
+  const emit=event=>f.providers[0].send(JSON.stringify(event));
+  emit({type:'input_audio_buffer.committed',item_id:'play'});
+  await until(()=>f.messages.some(e=>e.type==='response.create'));
+  emit({type:'response.created',response:{id:'role'}});
+  emit({type:'response.done',response:{id:'role',status:'completed',output:[{
+    type:'function_call',name:'role_reading',call_id:'select-rabbit',
+    arguments:JSON.stringify({action:'start',book:'토끼와 거북이',role:'토끼'})
+  }]}});
+  const cue=await until(()=>events.find(e=>e.type==='reading.cue'));
+  assert.equal(cue.role,'토끼');
+  assert.match(cue.text,/거북아/);
+});

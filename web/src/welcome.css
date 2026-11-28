@@ -22,3 +22,10 @@
 #account-login-form label {font-weight:650}
 #login-google {width:100%;margin-top:14px}
 #account-error:empty {display:none}
+
+.mic-action {display:flex;justify-content:center;padding:8px 0 16px}
+#realtime-connect {width:68px;height:68px;padding:0;border:0;border-radius:50%;display:grid;place-items:center;background:#194c3e;color:white;cursor:pointer}
+#realtime-connect svg {width:28px;height:28px}
+#realtime-connect[aria-pressed=true] {background:#914136;box-shadow:0 0 0 5px #f9e7e2}
+#realtime-connect:disabled {opacity:.5;cursor:default}
+#realtime-connect:focus-visible {outline:3px solid #194c3e;outline-offset:5px}
