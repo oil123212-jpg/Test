@@ -1,4 +1,5 @@
 import { attachAccounts } from './accounts.mjs';
+import { bookVoiceHandler } from './book-voice.mjs';
 import { serveBooks } from './book-store.mjs';
 import { createServer } from 'node:http';
 import { attachRealtime } from './realtime-gateway.mjs';
@@ -18,6 +19,7 @@ const securityHeaders = {
 const mime = { '.html':'text/html; charset=utf-8', '.js':'text/javascript; charset=utf-8', '.css':'text/css; charset=utf-8', '.svg':'image/svg+xml', '.json':'application/json; charset=utf-8', '.png':'image/png', '.ico':'image/x-icon', '.woff2':'font/woff2' };
 
 export function createAppServer(root = defaultRoot, realtimeOptions = {}, storageOptions = {}) {
+  const serveBookVoice = bookVoiceHandler(realtimeOptions);
   const absoluteRoot = resolve(root);
   let realtime, storage;
   const server = createServer(async (req, res) => {
@@ -26,7 +28,7 @@ export function createAppServer(root = defaultRoot, realtimeOptions = {}, storag
       res.writeHead(status, { 'Content-Type':'text/plain; charset=utf-8', 'Cache-Control':'no-store' });
       res.end(req.method === 'HEAD' ? undefined : message);
     };
-    if (serveBooks(req, res)) return;
+    if (serveBooks(req, res) || await serveBookVoice(req,res)) return;
     if (await accounts.handle(req,res) || await storage.handle(req, res) || await realtime.handle(req, res)) return;
     if (req.method !== 'GET' && req.method !== 'HEAD') {
       res.setHeader('Allow', 'GET, HEAD'); reply(405, 'Method not allowed'); return;

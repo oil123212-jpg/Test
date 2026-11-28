@@ -16,12 +16,12 @@ export function mountStoryPlay(root: HTMLElement) {
   let matcher: ReturnType<typeof createStoryMatcher> | undefined;
   let reader = createReader({});
   const run = (action: string, options = {}) => reader.run(JSON.stringify({ action, ...options }));
-  const synth = window.speechSynthesis;
+  const audio = new Audio();
+  let catalog: Record<string,[string,string][]> = {};
+  const endpoint = location.hostname === 'oil123212-jpg.github.io'
+    ? 'https://test-production-a904.up.railway.app/api/books' : '/api/books';
   let turn: ReadingTurn | undefined;
   let generation = 0, row = 0;
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  let utterance: SpeechSynthesisUtterance | undefined;
-
   function stopListening() {
     clearTimeout(listeningTimer);
     const active = recognition;
@@ -35,8 +35,9 @@ export function mountStoryPlay(root: HTMLElement) {
     stopListening(); matcher = undefined;
     retry.hidden = true;
     generation++;
-    clearTimeout(timer);
-    if (utterance) { utterance = undefined; synth.cancel(); }
+    audio.onended = audio.onerror = null;
+    audio.pause();
+    if (audio.hasAttribute('src')) { audio.removeAttribute('src'); audio.load(); }
   }
   function reset() {
     cancel(); run('stop'); turn = undefined; stage.hidden = true;
@@ -108,23 +109,18 @@ export function mountStoryPlay(root: HTMLElement) {
     status.textContent = '모모가 읽어주고 있어요.';
     next.hidden = true; skip.hidden = false;
     const token = ++generation;
+    audio.onended = () => {
+      if (token !== generation) return;
+      row++; speakRow();
+    };
     const failed = () => {
       if (token !== generation) return;
-      cancel(); status.textContent = '기기 음성으로 읽지 못했어요. 화면의 대사를 읽고 다음으로 넘어갈 수 있어요.';
+      cancel(); status.textContent = '모모 목소리를 재생하지 못했어요. 다시 듣거나 직접 넘길 수 있어요.';
     };
-    try {
-      const voice = synth?.getVoices().find(v => v.localService && /^ko(?:[-_]|$)/i.test(v.lang));
-      if (!voice) { failed(); return; }
-      const speech = new SpeechSynthesisUtterance(text);
-      utterance = speech; speech.voice = voice; speech.lang = 'ko-KR'; speech.rate = .85;
-      speech.onend = () => {
-        if (token !== generation) return;
-        clearTimeout(timer); utterance = undefined; row++; speakRow();
-      };
-      speech.onerror = failed;
-      timer = setTimeout(failed, Math.max(15000, text.length * 450));
-      synth.speak(speech);
-    } catch { failed(); }
+    audio.onerror = failed;
+    const index = catalog[turn.book].indexOf(entry);
+    audio.src = endpoint + '/audio?' + new URLSearchParams({book:turn.book,line:String(index)});
+    void audio.play().catch(failed);
   }
   function play(action: string) {
     cancel();
@@ -139,11 +135,10 @@ export function mountStoryPlay(root: HTMLElement) {
     loading = true;
     status.textContent = '책장을 여는 중이에요.';
     try {
-      const endpoint = location.hostname === 'oil123212-jpg.github.io'
-        ? 'https://test-production-a904.up.railway.app/api/books' : '/api/books';
       const response = await fetch(endpoint, {credentials:'omit'});
       if (!response.ok) throw new Error();
       const books = await response.json();
+      catalog = books;
       reader = createReader(books);
       for (const title of Object.keys(books)) book.add(new Option(title, title));
       chooseBook();
@@ -151,8 +146,6 @@ export function mountStoryPlay(root: HTMLElement) {
       status.textContent = '책장을 열 수 없어요. 잠시 후 다시 들어와 주세요.';
     } finally { loading = false; }
   }
-  // Request the voice list early so browsers that initialize it asynchronously can populate it.
-  synth?.getVoices();
   book.addEventListener('change', chooseBook);
   role.addEventListener('change', () => { reset(); start.disabled = !role.value; });
   start.addEventListener('click', () => play('start'));

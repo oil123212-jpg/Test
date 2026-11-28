@@ -7,6 +7,6 @@ export default defineConfig({
     configurePreviewServer(server) { server.middlewares.use((req,res,next) => { if (!serveBooks(req,res)) next(); }); },
   }],
   base: process.env.VITE_BASE_PATH || '/',
-  server: { proxy: { '/api/auth': { target: 'http://127.0.0.1:3000' }, '/api/realtime': { target: 'http://127.0.0.1:3000', ws: true }, '/api/life-guide': { target: 'http://127.0.0.1:3000' } }, headers: { 'Permissions-Policy': 'microphone=(self), camera=(), on-device-speech-recognition=(self)', 'Referrer-Policy': 'no-referrer', 'X-Content-Type-Options': 'nosniff' } },
+  server: { proxy: { '/api/books/audio': 'http://127.0.0.1:3000', '/api/auth': { target: 'http://127.0.0.1:3000' }, '/api/realtime': { target: 'http://127.0.0.1:3000', ws: true }, '/api/life-guide': { target: 'http://127.0.0.1:3000' } }, headers: { 'Permissions-Policy': 'microphone=(self), camera=(), on-device-speech-recognition=(self)', 'Referrer-Policy': 'no-referrer', 'X-Content-Type-Options': 'nosniff' } },
   preview: { headers: { 'Permissions-Policy': 'microphone=(self), camera=(), on-device-speech-recognition=(self)', 'Referrer-Policy': 'no-referrer', 'X-Content-Type-Options': 'nosniff', 'Content-Security-Policy': "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'" } },
 });

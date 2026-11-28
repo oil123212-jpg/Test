@@ -9,6 +9,7 @@ export function expressionFor(text) {
   return null;
 }
 
+import { momoVoice } from './book-voice.mjs';
 import { randomBytes, timingSafeEqual } from 'node:crypto';
 import { WebSocket, WebSocketServer } from 'ws';
 import { emptyLifeGuide, parseLifeGuide, LifeGuidePlanner } from '../shared/life-guide.mjs';
@@ -39,8 +40,7 @@ function readJson(req) {
 }
 export function attachRealtime(server, options = {}) {
   const apiKey = options.apiKey ?? process.env.OPENAI_API_KEY ?? '';
-  const model = options.model ?? process.env.OPENAI_REALTIME_MODEL ?? 'gpt-realtime-2';
-  const voice = options.voice ?? process.env.OPENAI_REALTIME_VOICE ?? 'marin';
+  const {model, voice} = momoVoice(options);
   const accessCode = options.accessCode ?? process.env.REALTIME_ACCESS_CODE ?? '';
   const upstreamURL = options.upstreamURL ?? `wss://api.openai.com/v1/realtime?model=${encodeURIComponent(model)}`;
   const tickets = new Map(), active = new Map();

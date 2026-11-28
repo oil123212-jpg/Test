@@ -2,19 +2,12 @@ import { test, expect } from '@playwright/test';
 
 test('the rabbit turn stays silent and waits until the child taps, without microphone use', async ({page}) => {
   await page.addInitScript(() => {
-    // Mock the utterance together with the voice; native setters require a native voice.
-    Object.defineProperty(window, 'SpeechSynthesisUtterance', {value: class {
-      constructor(public text: string) {}
-    }});
     const spoken: string[] = [];
     Object.assign(window, { storySpoken: spoken });
-    Object.defineProperty(window, 'speechSynthesis', {value: {
-      getVoices: () => [{localService: true, lang: 'ko-KR'}],
-      speak: (speech: SpeechSynthesisUtterance) => {
-        spoken.push(speech.text);
-        setTimeout(() => speech.onend?.(new Event('end') as SpeechSynthesisEvent), 0);
-      }, cancel() {},
-    }});
+    HTMLMediaElement.prototype.play = async function() {
+      spoken.push(new URL(this.src).searchParams.get('line')!);
+      setTimeout(()=>this.dispatchEvent(new Event('ended')),0);
+    };
     if (navigator.mediaDevices) navigator.mediaDevices.getUserMedia = async () => {
       spoken.push('MIC'); throw new Error('Role play must not use the microphone');
     };
@@ -28,7 +21,8 @@ test('the rabbit turn stays silent and waits until the child taps, without micro
   await expect(page.locator('#story-line')).toContainText('달리기 경주를 하자');
   const spoken = await page.evaluate(() => (window as Window & {storySpoken?: string[]}).storySpoken);
   expect(spoken).toHaveLength(4);
-  expect(spoken).not.toContain(firstLine);
+  expect(firstLine).toContain('거북아');
+  expect(spoken).toEqual(['0','2','3','4']);
   expect(spoken).not.toContain('MIC');
   await page.getByRole('button', {name:'직접 넘기기'}).click();
   await expect(page.locator('#story-line')).toContainText('어디에 있지');
@@ -51,7 +45,7 @@ test('local recognition advances after enough final words and aborts before the 
     }
     let active: LocalMock | undefined;
     Object.defineProperty(window, 'SpeechRecognition', {value: LocalMock});
-    Object.defineProperty(window, 'speechSynthesis', {value: {getVoices: () => [], cancel() {}}});
+    HTMLMediaElement.prototype.play = async () => { throw Error('unavailable'); };
     Object.assign(window, {emitStory: (transcript: string, isFinal: boolean, index: number) => {
       if (!active) throw new Error('Not listening');
       const results = Array(index + 1).fill({isFinal, 0: {transcript}});
