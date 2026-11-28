@@ -3,7 +3,7 @@ import {expect,type Page} from '@playwright/test';
 const users=new WeakMap<Page,string>();
 export async function credentials(page:Page) {
   const before=users.get(page);
-  const name=before??'test-'+randomUUID();
+  const name=before??'t'+randomUUID();
   users.set(page,name);
   await page.locator('#account-name').fill(name);
   await page.locator('#account-password').fill('a test password with spaces');

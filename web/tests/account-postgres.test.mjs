@@ -15,7 +15,7 @@ test('logged-in consent binds text logs to their owner, expiry, reset and logout
   const request=(path,method,body)=>fetch(origin+'/api/auth/'+path,{method,headers:{origin,cookie,'content-type':'application/json'},body:body&&JSON.stringify(body)});
   const req=()=>({headers:{cookie}});
   assert.equal(await accounts.recording(req()),null);
-  const name='test-'+randomUUID(),password='test-account-passphrase';
+  const name='t'+randomUUID(),password='test-account-passphrase';
   t.after(async()=>{
     await pool.query('DELETE FROM momo_conversation_logs WHERE account_id IN (SELECT id FROM momo_accounts WHERE identity=$1)',['local:'+name]);
     await pool.query('DELETE FROM momo_account_sessions WHERE account_id IN (SELECT id FROM momo_accounts WHERE identity=$1)',['local:'+name]);
