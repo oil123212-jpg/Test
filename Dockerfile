@@ -4,6 +4,7 @@ COPY web/package.json web/package-lock.json ./
 RUN npm ci
 COPY web/index.html web/tsconfig.json web/vite.config.ts ./
 COPY web/src ./src
+COPY web/scripts/book-store.mjs ./scripts/
 COPY web/shared ./shared
 COPY web/public ./public
 RUN npm run build
@@ -14,8 +15,8 @@ ENV NODE_ENV=production
 WORKDIR /app
 COPY --from=build --chown=node:node /app/dist ./dist
 COPY --from=build --chown=node:node /app/node_modules ./node_modules
-COPY --chown=node:node web/scripts/serve.mjs web/scripts/realtime-gateway.mjs web/scripts/life-guide-store.mjs web/scripts/momo-prompt.mjs web/scripts/dialogue-examples.mjs web/scripts/role-reading.mjs ./scripts/
-COPY --chown=node:node web/data/dialogue.sqlite ./data/dialogue.sqlite
+COPY --chown=node:node web/scripts/serve.mjs web/scripts/realtime-gateway.mjs web/scripts/life-guide-store.mjs web/scripts/momo-prompt.mjs web/scripts/dialogue-examples.mjs web/scripts/role-reading.mjs web/scripts/book-store.mjs ./scripts/
+COPY --chown=node:node web/data/*.sqlite ./data/
 COPY --chown=node:node web/shared ./shared
 COPY --chown=node:node web/package.json ./package.json
 USER node

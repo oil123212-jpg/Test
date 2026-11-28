@@ -62,3 +62,27 @@ Railway 빌드 로그에서 `--mount=type=secret,id=build_ca`가 지원되지 �
 ## v0.3 실시간 대화
 
 [Realtime 설정](realtime_setup.md)이 최신 연결 안내입니다. Docker runtime에 ws 의존성과 gateway 스크립트를 포함합니다. 아래의 과거 테스트 53개 기록과 별도로 최신 서버 24개/브라우저 62개 검증을 완료했습니다. 실제 OpenAI 연결 결과는 서비스 재배포 후 확인해야 합니다.
+
+## 동화 역할극 자동 넘김 — 배포 점검
+
+새 환경변수가 없습니다. GitHub 소스 루트 `/`의 Dockerfile에서 Node 24로 `npm ci` → `npm run build`를 실행하고, 시작 명령을 덮어쓰지 않으면 `node scripts/serve.mjs`가 실행됩니다. `PORT`(미설정 시 3000)를 읽어 `0.0.0.0`에 바인딩합니다. `/health`(HTTP 200)는 프로세스 점검이며 DB나 브라우저 음성 지원까지 검증하지는 않습니다.
+
+| 범위 | 변수명 | 용도 |
+|---|---|---|
+| Railway 웹 | `PORT` | Railway 런타임이 주입하는 수신 포트 |
+| Railway 웹 | `OPENAI_API_KEY` | 기존 실시간 대화 서버의 인증 키. 역할극에는 불필요 |
+| Railway 웹 | `OPENAI_REALTIME_MODEL`, `OPENAI_REALTIME_VOICE` | 선택: 기존 실시간 대화 모델·목소리 지정 |
+| Railway 웹 | `REALTIME_ACCESS_CODE` | 선택: 기존 실시간 대화 접속 코드 |
+| Railway 웹 | `PUBLIC_APP_ORIGIN` | 선택: 기존 API 오리진 검증용 공개 HTTPS 오리진 |
+| Railway 웹 | `DATABASE_URL` | 프로필·생활 시간표의 영구 저장용 PostgreSQL 연결 URL |
+| 웹 빌드·테스트 | `VITE_BASE_PATH`, `PLAYWRIGHT_BASE_PATH`, `WEB_SERVER_TARGET`, `LIFE_GUIDE_TEST_DATABASE_URL` | 정적 자산 경로, 테스트 URL 경로, 테스트 서버 선택, 테스트 전용 PostgreSQL URL. Railway 서비스에는 설정하지 않음 (`VITE_BASE_PATH`는 Railway 기본 `/` 유지) |
+| Docker 런타임 | `NODE_ENV` | Dockerfile이 `production`으로 지정 |
+| Python 기기 앱 (Railway 미사용) | `APP_ENV`, `LOG_LEVEL` | 앱 실행 환경·로그 수준 |
+| Python 기기 앱 | `AUDIO_SAMPLE_RATE`, `AUDIO_CHANNELS`, `AUDIO_INPUT_DEVICE`, `AUDIO_OUTPUT_DEVICE` | 샘플레이트·채널·입출력 장치 |
+| Python 기기 앱 | `AI_PROVIDER`, `OPENAI_REALTIME_MODEL`, `GEMINI_LIVE_MODEL` | 기기 앱 제공자 및 모델 설정 |
+| Python 기기 앱 | `AUTH_SERVER_URL`, `DEVICE_ID`, `ENABLE_AUDIO_STORAGE`, `ENABLE_TRANSCRIPT_STORAGE` | 인증 주소·기기 식별자·음성/전사 저장 정책 |
+| 보조 스크립트 (Railway 미사용) | `LD_LIBRARY_PATH`, `GIT_INDEX_FILE` | PortAudio 라이브러리 경로·게시 스크립트의 임시 Git 인덱스 |
+
+비밀값은 Railway 서비스 Variables에만 설정하세요. `.env` 계열은 Git과 Docker 빌드 컨텍스트에서 제외되며, 값 없는 Python 예시 파일만 소스에 포함합니다. 역할극 진행과 인식 결과는 저장하지 않습니다. 유저 설정은 PostgreSQL만 사용하고, 이미지에 포함되는 `dialogue.sqlite`는 기존 예제 조회용 읽기 전용 파일입니다. 서버 재시작 뒤에는 프로필·시간표가 유지되지만 체험 세션은 다시 로그인해야 합니다.
+
+이번 변경에서 대본·판정 테스트 5개를 실행했습니다. 위의 기존 검증 기록은 이번 변경의 재실행 결과가 아닙니다. 배포 전 GitHub CI에서 Node 24 빌드와 모의 브라우저 테스트를 확인하고, Railway 배포 뒤 HTTPS `/health`와 태블릿의 한국어 인식·TTS를 확인하세요. 자동 넘김은 기기/브라우저의 로컬 한국어 인식 지원에 의존합니다. 미지원 기기에서 서버 인식으로 전환되지는 않습니다.

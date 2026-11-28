@@ -1,0 +1,9 @@
+.story-card { padding: clamp(18px, 4vw, 32px); margin-bottom: 16px; }
+.story-controls { display: flex; align-items: end; flex-wrap: wrap; gap: 14px; }
+.story-controls label { display: grid; gap: 6px; flex: 1 1 155px; font-weight: 700; }
+.story-controls select { min-height: 48px; width: 100%; font: inherit; background: white; color: #17332b; border: 1px solid #587269; border-radius: 10px; padding: 8px; }
+.story-card button { min-height: 48px; }
+.story-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
+#story-speaker { color: #165744; font-weight: 800; }
+#story-line { font-size: clamp(22px, 4vw, 34px); line-height: 1.5; word-break: keep-all; overflow-wrap: anywhere; }
+#story-play-view [hidden] { display: none !important; }

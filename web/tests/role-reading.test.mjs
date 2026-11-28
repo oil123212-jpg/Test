@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createReader,readingTool} from '../scripts/role-reading.mjs';
+import {createReader} from '../scripts/role-reading.mjs';
 test('every offered role waits at its own lines, repeats and finishes in order',()=>{
-  for(const book of readingTool.parameters.properties.book.enum){
+  for(const book of createReader().run(JSON.stringify({action:'choose'})).titles){
     const reader=createReader(),run=(action,role)=>reader.run(JSON.stringify({action,book,role}));
     for(const role of run('choose').roles){
       let turn=run('start',role),count=0;
@@ -31,4 +31,15 @@ test('a role-only reply uses the chosen title; advancing after the ending is sil
   assert.deepEqual(run({action:'repeat'}),ending);
   run({action:'stop'});
   assert.ok(run({action:'start',role:'토끼'}).titles);
+});
+
+test('unqualified requests announce a database title and immediately return its ordered lines',()=>{
+  const books={'테스트 책':[['해설','첫 문장'],['친구','끝 문장']]};
+  const reader=createReader(()=>books);
+  const turn=reader.run('{"action":"read"}');
+  assert.equal(turn.book,'테스트 책');
+  assert.ok(turn.announceTitle);
+  assert.deepEqual(turn.narration,books[turn.book]);
+  assert.ok(reader.run('{"action":"read","book":"없는 책"}').error);
+  assert.ok(createReader(()=>{throw Error();}).run('{"action":"read"}').error);
 });

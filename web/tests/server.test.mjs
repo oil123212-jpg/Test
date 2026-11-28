@@ -19,7 +19,7 @@ test('serves the entrypoint with production security headers', async () => {
   const res = await fetch(address); assert.equal(res.status, 200); assert.equal(await res.text(), '<h1>Momo</h1>');
   assert.equal(res.headers.get('x-content-type-options'), 'nosniff');
   assert.match(res.headers.get('content-security-policy'), /connect-src 'self'/);
-  assert.equal(res.headers.get('permissions-policy'), 'microphone=(self), camera=()');
+  assert.equal(res.headers.get('permissions-policy'), 'microphone=(self), camera=(), on-device-speech-recognition=(self)');
 });
 test('healthcheck responds without authentication or caching', async () => {
   const res = await fetch(address+'/health'); assert.equal(res.status, 200); assert.deepEqual(await res.json(), {status:'ok'});

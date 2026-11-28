@@ -307,3 +307,20 @@ test('memory expires at 48 hours and rejects arbitrary text',async()=>{
   for(const data of [{topic:'blocks',at},{topic:'unknown',at:at+1},{topic:{toString:0},at}])
     assert.equal(memoryHint(data,at+memoryTTL),'');
 });
+
+test('a reading request returns the SQLite title and opening in the same spoken response', async t => {
+  const f = await setup(t);
+  const {events} = await f.socket(await f.session(consentBody));
+  await until(() => events.some(e => e.type === 'ready'));
+  const emit = event => f.providers[0].send(JSON.stringify(event));
+  const creates = () => f.messages.filter(e => e.type === 'response.create');
+  emit({type:'input_audio_buffer.committed',item_id:'book-request'});
+  await until(() => creates().length === 1);
+  emit({type:'response.created',response:{id:'book-lookup'}});
+  emit({type:'response.done',response:{id:'book-lookup',status:'completed',output:[{
+    type:'function_call',call_id:'book',name:'role_reading',arguments:'{"action":"read"}',
+  }]}});
+  await until(() => creates().length === 2);
+  const turn = JSON.parse(f.messages.find(e => e.type === 'conversation.item.create').item.output);
+  assert.ok(creates()[1].response.instructions.endsWith([turn.book, ...turn.narration.map(row=>row[1])].join('\n')));
+});

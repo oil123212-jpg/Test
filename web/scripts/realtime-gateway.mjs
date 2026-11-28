@@ -214,10 +214,17 @@ export function attachRealtime(server, options = {}) {
               ? (event.response.output ?? []).filter(item => item.type === 'function_call') : [];
             if (calls.length && !pendingTurn && !usedLookup) {
               usedLookup = true;
+              let followupInstructions = turnInstructions;
               for (const [index, call] of calls.entries()) {
                 let result={examples:[]};
                 if(index===0 && call.name===readingTool.name){
                   result=reader.run(call.arguments);
+                  if (result.announceTitle) {
+                    const passage = [result.book, ...result.narration.map(([,text])=>text)].join('\n');
+                    followupInstructions += '\n이번 응답은 낭독이야. 아래 DB 제목과 대본만 그대로 소리 내어 읽어.\n' + passage;
+                  } else if (result.error) {
+                    followupInstructions += '\n책 조회에 실패했어. 반환된 오류 안내만 말하고 낭독을 끝내.';
+                  }
                   send({type:'reading.cue',text:reader.current()?.cue||'',role:reader.current()?.role||''});
                 } else if(index===0) result=lookupDialogue(call);
                 upstreamSend({type:'conversation.item.create',item:{
@@ -225,7 +232,7 @@ export function attachRealtime(server, options = {}) {
                 }});
               }
               responseInFlight = true;
-              upstreamSend({type:'response.create',response:{instructions:turnInstructions, tool_choice:'none'}});
+              upstreamSend({type:'response.create',response:{instructions:followupInstructions, tool_choice:'none'}});
               return;
             }
             send({type:'response.done'}); respond();

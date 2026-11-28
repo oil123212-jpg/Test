@@ -3,13 +3,13 @@ async function consent(page:Page){await page.locator('#login-button').click();aw
 test.beforeEach(async({page})=>{
   await page.addInitScript(()=>{(window as any).__micCalls=0;const get=navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);navigator.mediaDevices.getUserMedia=async c=>{(window as any).__micCalls++;return get(c);};});
 });
-test('home shows generated Momo and only the live conversation without starting the microphone',async({page},info)=>{
+test('home shows generated Momo and the live conversation without starting the microphone',async({page},info)=>{
   const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));await page.goto('./');
   await expect(page.getByRole('heading',{name:'반가워요, 모모에요'})).toBeVisible();
   const image=page.locator('#conversation-orb img');await expect(image).toBeVisible();
   expect(await image.evaluate((e:HTMLImageElement)=>e.complete&&e.naturalWidth>0)).toBe(true);
   await expect(page.locator('#audio-lab,#try-demo,#record,[data-route="audio"],a[href="#audio"],.hero')).toHaveCount(0);
-  await expect(page.locator('nav [data-route]')).toHaveCount(2);
+  await expect(page.locator('nav [data-route]')).toHaveCount(3);
   expect(await page.evaluate(()=>(window as any).__micCalls)).toBe(0);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
   await page.screenshot({path:`test-results/${info.project.name}-dashboard.png`,fullPage:true});expect(errors).toEqual([]);

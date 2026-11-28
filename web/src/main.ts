@@ -6,6 +6,7 @@ import './contrast.css';
 import { mountIcons } from './icons';
 import { RealtimeConversation, realtimeErrors, type ConversationState } from './realtime-client';
 import { mountLifeGuide } from './life-guide';
+import { mountStoryPlay } from './story-play';
 import { mountChildProfile } from './child-profile';
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 // UI acknowledgement for this tab only; never a verified guardian/auth state.
@@ -98,6 +99,7 @@ function openConsent() {
   if (!consentDialog.open) consentDialog.showModal();
 }
 function endSession(message?: string) {
+  storyPlay.reset();
   lifeGuide.logout();
   localAudioConsent = false;
   $<HTMLInputElement>('realtime-consent').checked = false;
@@ -162,17 +164,20 @@ $<HTMLInputElement>('volume').addEventListener('input', event => {
 });
 $<HTMLSelectElement>('output-device').disabled = !(typeof AudioContext !== 'undefined' && 'setSinkId' in AudioContext.prototype);
 if (!(typeof AudioContext !== 'undefined' && 'setSinkId' in AudioContext.prototype)) $('output-note').textContent = '이 브라우저에서는 시스템 기본 스피커를 사용해요. 기기의 오디오 설정에서 바꿔 주세요.';
+const storyPlay = mountStoryPlay($('story-play-view'));
 function route() {
   const name = location.hash.slice(1) || 'overview';
-  const known = name === 'life-guide' ? 'life-guide' : 'overview';
+  const known = name === 'life-guide' || name === 'story-play' ? name : 'overview';
   if (name !== known) history.replaceState(null, '', `${location.pathname}${location.search}#overview`);
   document.querySelectorAll<HTMLElement>('[data-route]').forEach(link => {
     const active = link.dataset.route === known; link.classList.toggle('active', active);
     if (active) link.setAttribute('aria-current', 'page'); else link.removeAttribute('aria-current');
   });
-  $('overview-view').hidden = known === 'life-guide';
+  $('overview-view').hidden = known !== 'overview';
+  $('story-play-view').hidden = known !== 'story-play';
+  if (known === 'story-play') { conversation.stop(); void storyPlay.open(); } else storyPlay.reset();
   $('life-guide-view').hidden = known !== 'life-guide';
-  $('page-name').textContent = known === 'life-guide' ? '라이프 가이드' : '대시보드';
+  $('page-name').textContent = known === 'life-guide' ? '라이프 가이드' : known === 'story-play' ? '동화 역할극' : '대시보드';
   window.scrollTo(0, 0);
 }
 window.addEventListener('hashchange', route);
@@ -180,6 +185,6 @@ window.addEventListener('pagehide', () => {
   if (consentDialog.open) consentDialog.close();
   endSession();
 });
-document.addEventListener('visibilitychange', () => { if (document.hidden) conversation.stop(); });
+document.addEventListener('visibilitychange', () => { if (document.hidden) { conversation.stop(); storyPlay.reset(); } });
 window.addEventListener('keydown', event => { if (event.key === 'Escape' && realtimeState !== 'idle') conversation.stop(); });
 route(); updateConversationButtons(); updateConsentButton();

@@ -14,6 +14,7 @@
     <p class="nav-label">모모와 함께</p>
     <nav aria-label="주 메뉴">
       <a href="#overview" class="nav-item active" data-route="overview"><span data-icon="grid"></span>대시보드</a>
+      <a href="#story-play" class="nav-item" data-route="story-play" aria-label="동화 역할극"><span data-icon="book"></span>동화 역할극</a>
       <a href="#life-guide" class="nav-item" data-route="life-guide"><span data-icon="leaf"></span>라이프 가이드</a>
     </nav>
     <div class="sidebar-note"><div class="tiny-leaf" data-icon="leaf"></div><strong>작은 시작, 안전한 연결</strong><p>아이를 위한 기술은<br>안전한 기본값에서 시작해요.</p></div>
@@ -36,6 +37,30 @@
           <p class="privacy-footnote"><span data-icon="lock"></span>이 사이트는 음성 파일을 저장하지 않습니다. OpenAI의 데이터 처리·보관 조건은 별도로 적용됩니다.</p>
           <p id="life-guide-conversation-status" class="small-note">라이프가이드 연결 꺼짐 · 부모님 페이지에서 생활 시간을 설정할 수 있어요.</p>
         </section>
+      </section>
+      <section id="story-play-view" class="view" hidden aria-labelledby="story-title">
+        <div class="page-heading"><div><h1 id="story-title">모모와 동화 역할극</h1><p class="page-subtitle">내가 고른 등장인물은 내가, 나머지 대사와 해설은 모모가 읽어요.</p></div></div>
+        <div class="story-card card">
+          <div class="story-controls">
+            <label>동화<select id="story-book"></select></label>
+            <label>내가 맡을 역할<select id="story-role"></select></label>
+            <button id="story-start" class="primary-button" type="button" disabled>역할극 시작</button>
+          </div>
+          <p class="small-note">보호자가 자동 넘김을 켜면 아이 차례에만 마이크를 사용해요. 인식은 기기에서만 하고, 음성과 인식 문장을 서버로 보내거나 저장하지 않아요.</p>
+          <button id="story-auto" class="secondary-button" type="button" aria-pressed="false">자동 넘김 켜기</button>
+          <p id="story-setup" class="small-note" role="status"></p>
+        </div>
+        <div class="story-card card" id="story-stage" hidden>
+          <div aria-live="polite" aria-atomic="true"><p id="story-speaker"></p><p id="story-line"></p></div>
+          <p id="story-status" role="status"></p>
+          <div class="story-actions">
+            <button id="story-next" class="secondary-button" type="button" hidden>직접 넘기기</button>
+            <button id="story-retry" class="secondary-button" type="button" hidden>다시 듣기 시작</button>
+            <button id="story-skip" class="secondary-button" type="button" hidden>다음 대사</button>
+            <button id="story-replay" class="secondary-button" type="button">모모 대사 다시 듣기</button>
+            <button id="story-stop" class="secondary-button" type="button">그만하기</button>
+          </div>
+        </div>
       </section>
       <section id="life-guide-view" class="view" hidden aria-labelledby="life-guide-title">
         <div class="page-heading"><div><p class="eyebrow">OUR DAILY RHYTHM</p><h1 id="life-guide-title">라이프 가이드<span class="heading-spark" aria-hidden="true" data-icon="sparkles"></span></h1><p class="page-subtitle">부모님이 정하는 생활 리듬, 모모가 건네는 다정한 한마디.</p></div></div>

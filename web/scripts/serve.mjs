@@ -1,3 +1,4 @@
+import { serveBooks } from './book-store.mjs';
 import { createServer } from 'node:http';
 import { attachRealtime } from './realtime-gateway.mjs';
 import { attachLifeGuideStorage } from './life-guide-store.mjs';
@@ -10,7 +11,7 @@ const defaultRoot = fileURLToPath(new URL('../dist/', import.meta.url));
 const securityHeaders = {
   'X-Content-Type-Options': 'nosniff',
   'Referrer-Policy': 'no-referrer',
-  'Permissions-Policy': 'microphone=(self), camera=()',
+  'Permissions-Policy': 'microphone=(self), camera=(), on-device-speech-recognition=(self)',
   'Content-Security-Policy': "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'",
 };
 const mime = { '.html':'text/html; charset=utf-8', '.js':'text/javascript; charset=utf-8', '.css':'text/css; charset=utf-8', '.svg':'image/svg+xml', '.json':'application/json; charset=utf-8', '.png':'image/png', '.ico':'image/x-icon', '.woff2':'font/woff2' };
@@ -24,6 +25,7 @@ export function createAppServer(root = defaultRoot, realtimeOptions = {}, storag
       res.writeHead(status, { 'Content-Type':'text/plain; charset=utf-8', 'Cache-Control':'no-store' });
       res.end(req.method === 'HEAD' ? undefined : message);
     };
+    if (serveBooks(req, res)) return;
     if (await storage.handle(req, res) || await realtime.handle(req, res)) return;
     if (req.method !== 'GET' && req.method !== 'HEAD') {
       res.setHeader('Allow', 'GET, HEAD'); reply(405, 'Method not allowed'); return;
@@ -69,7 +71,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
   if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('PORT must be an integer from 1 to 65535');
   await stat(resolve(defaultRoot, 'index.html'));
   const server = createAppServer();
-  server.listen(port, '0.0.0.0', () => console.log(`Momo web listening on port ${port}`));
+  server.listen(port, '0.0.0.0', () => console.log('Momo web ready'));
   const shutdown = () => {
     server.close(() => process.exit(0));
     setTimeout(() => { server.closeAllConnections(); process.exit(0); }, 5000).unref();
