@@ -1,5 +1,5 @@
-.welcome-heading {display:flex;align-items:center;gap:18px}
-.welcome-heading img {width:clamp(64px,9vw,100px);height:auto;object-fit:contain}
+.welcome-heading {display:flex;align-items:center;justify-content:flex-start;gap:0}
+.welcome-heading img {height:clamp(64px,9vw,100px);width:auto;aspect-ratio:2 / 3;object-fit:cover;flex:none}
 #conversation-orb,#conversation-orb.active {width:clamp(168px,38vw,290px);height:auto;aspect-ratio:320/318;display:grid;place-items:stretch}
 #conversation-face,.login-face {display:block;background:url('/momo-expressions.png') 0 0 / 300% 200% no-repeat}
 #conversation-face[data-face=listening] {background-position:50% 0}
