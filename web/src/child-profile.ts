@@ -40,7 +40,7 @@ export function mountChildProfile(onChange:(profile:ChildProfile|null)=>void, re
   name.addEventListener('input',markDirty);age.addEventListener('change',markDirty);
   function message(error:unknown) {
     const code=error instanceof Error?error.message:'';
-    if(code==='LOGIN_REQUIRED')return '체험 로그인 후 다시 저장해 주세요.';
+    if(code==='LOGIN_REQUIRED')return '로그인 후 다시 저장해 주세요.';
     if(code==='DATABASE_NOT_CONFIGURED')return 'DB 연결 설정이 필요해요. Railway의 DATABASE_URL을 확인해 주세요.';
     if(code==='INVALID_PROFILE')return '이름은 1~30자의 글자로, 나이는 3~6세로 입력해 주세요.';
     return '프로필을 처리하지 못했어요. 네트워크와 DB 연결을 확인하고 다시 시도해 주세요.';
@@ -68,7 +68,7 @@ export function mountChildProfile(onChange:(profile:ChildProfile|null)=>void, re
       generation++;controller?.abort();busy=false;profile=null;onChange(null);if(!dirty)render();controls();status.textContent=message(error);el('profile-reload').hidden=false;return;
     }
     generation++;controller?.abort();controller=null;busy=false;profile=null;onChange(null);render();
-    status.textContent='체험 로그인 후 프로필을 저장할 수 있어요.';el('profile-reload').hidden=true;
+    status.textContent='로그인 후 프로필을 저장할 수 있어요.';el('profile-reload').hidden=true;
   }
   el('child-profile-form').addEventListener('submit',async event=>{
     event.preventDefault();if(busy)return;

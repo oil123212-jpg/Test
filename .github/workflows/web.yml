@@ -5,6 +5,13 @@ permissions:
 jobs:
   web:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: momo_ci
+        ports: ['5432:5432']
+        options: --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
     defaults:
       run:
         working-directory: web
@@ -19,4 +26,6 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - run: npm run build
       - run: npm run test:server
-      - run: npm run test:realtime
+      - run: node --test tests/account-postgres.test.mjs && npm run test:realtime
+        env:
+          DATABASE_URL: postgres://postgres:momo_ci@localhost:5432/postgres

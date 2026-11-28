@@ -1,5 +1,6 @@
+import {enter,credentials} from './account-helpers';
 import {test,expect,type Page} from '@playwright/test';
-async function consent(page:Page){await page.locator('#login-button').click();await page.locator('#login-continue').click();await page.locator('#consent-checkbox').check();await page.locator('#consent-accept').click();await page.locator('#profile-skip').click();}
+async function consent(page:Page){await enter(page);}
 test.beforeEach(async({page})=>{
   await page.addInitScript(()=>{(window as any).__micCalls=0;const get=navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);navigator.mediaDevices.getUserMedia=async c=>{(window as any).__micCalls++;return get(c);};});
 });
@@ -20,15 +21,15 @@ test('removed audio and legacy routes return home without errors',async({page})=
   expect(errors).toEqual([]);
 });
 test('login consent remains explicit and cancellation resets it',async({page})=>{
-  await page.goto('./');await page.locator('#login-button').click();await page.locator('#login-continue').click();await expect(page.locator('#consent-accept')).toBeDisabled();
+  await page.goto('./');await page.locator('#login-button').click();await credentials(page);await expect(page.locator('#consent-accept')).toBeDisabled();
   await page.locator('#consent-checkbox').check();await page.keyboard.press('Escape');await expect(page.locator('#consent-dialog')).toBeHidden();
-  await page.locator('#login-button').click();await page.locator('#login-continue').click();await expect(page.locator('#consent-checkbox')).not.toBeChecked();await expect(page.locator('#consent-accept')).toBeDisabled();
-  await page.locator('#consent-decline').click();await expect(page.locator('#login-button')).toHaveText('체험 로그인');
+  await page.locator('#login-button').click();await credentials(page);await expect(page.locator('#consent-checkbox')).not.toBeChecked();await expect(page.locator('#consent-accept')).toBeDisabled();
+  await page.locator('#consent-decline').click();await expect(page.locator('#login-button')).toHaveText('로그인');
   expect(await page.evaluate(()=>(window as any).__micCalls)).toBe(0);
 });
-test('acceptance does not start capture and reload requires fresh consent',async({page})=>{
-  await page.goto('./');await consent(page);await expect(page.locator('#login-button')).toHaveText('이용 종료');
-  expect(await page.evaluate(()=>(window as any).__micCalls)).toBe(0);await page.reload();await expect(page.locator('#login-button')).toHaveText('체험 로그인');
+test('acceptance does not start capture and logout clears the session after reload',async({page})=>{
+  await page.goto('./');await consent(page);await expect(page.locator('#login-button')).toHaveText('로그아웃');
+  expect(await page.evaluate(()=>(window as any).__micCalls)).toBe(0);await page.locator('#login-button').click();await expect(page.locator('#login-button')).toHaveText('로그인');await page.reload();await expect(page.locator('#login-button')).toHaveText('로그인');
 });
 test('audio settings and help contain current voice controls',async({page})=>{
   await page.goto('./');await page.locator('#open-settings').click();await page.locator('#audio-settings-tab').click();
@@ -40,8 +41,8 @@ test('audio settings and help contain current voice controls',async({page})=>{
 });
 test('consent popup fits mobile and supports keyboard re-entry',async({page})=>{
   await page.goto('./');await page.locator('#login-button').click();expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
-  await page.locator('#login-continue').click();await page.locator('#consent-checkbox').focus();await page.keyboard.press('Space');await expect(page.locator('#consent-accept')).toBeEnabled();
-  await page.locator('#consent-accept').click();await page.locator('#profile-skip').click();await page.locator('#login-button').click();await page.locator('#login-button').click();await page.locator('#login-continue').click();await expect(page.locator('#consent-checkbox')).not.toBeChecked();
+  await credentials(page);await page.locator('#consent-checkbox').focus();await page.keyboard.press('Space');await expect(page.locator('#consent-accept')).toBeEnabled();
+  await page.locator('#consent-accept').click();await page.locator('#profile-skip').click();await page.locator('#login-button').click();await expect(page.locator('#login-button')).toHaveText('로그인');await expect(page.locator('#profile-name')).toHaveValue('');
 });
 
 test('policy links work before login and memory reset clears only this browser cookie',async({page,context})=>{

@@ -35,7 +35,7 @@ export function postgresLifeGuideStore(connectionString = process.env.DATABASE_U
     close: () => pool.end(),
   };
 }
-export function attachLifeGuideStorage(server, { store = postgresLifeGuideStore(), now = Date.now } = {}) {
+export function attachLifeGuideStorage(server, { store = postgresLifeGuideStore(), now = Date.now, accounts } = {}) {
   const sessions = new Map();
   let admissions = [];
   const readCookie = (req, name) => new RegExp(`(?:^|;\\s*)${name}=([a-f0-9]{64})(?:;|$)`).exec(req.headers.cookie || '')?.[1];
@@ -74,6 +74,13 @@ export function attachLifeGuideStorage(server, { store = postgresLifeGuideStore(
     if (req.method !== 'GET' && !originAllowed(req)) { json(res,403,{code:'ORIGIN_DENIED'}); return true; }
     if (req.method === 'GET' && req.headers['sec-fetch-site'] === 'cross-site') { json(res,403,{code:'ORIGIN_DENIED'}); return true; }
     try {
+      let accountSession;
+      if (accounts) {
+        const who = await accounts.session(req);
+        if (!who || !who.consent) { json(res,who?403:401,{code:who?'CONSENT_REQUIRED':'LOGIN_REQUIRED'}); return true; }
+        if (path.endsWith('/login') || path.endsWith('/logout')) { json(res,410,{code:'USE_ACCOUNT_LOGIN'}); return true; }
+        accountSession = {device:who.id};
+      }
       if (path === '/api/life-guide/logout' && req.method === 'POST') {
         const session = identify(req);
         // Target a specific login so a delayed logout cannot revoke a later one.
@@ -104,7 +111,7 @@ export function attachLifeGuideStorage(server, { store = postgresLifeGuideStore(
         json(res,200,{sessionId:token}); return true;
       }
       if (!['/api/life-guide','/api/life-guide/profile'].includes(path)) { json(res,405,{code:'METHOD_NOT_ALLOWED'}); return true; }
-      const session = identify(req);
+      const session = accountSession ?? identify(req);
       if (!session) { json(res,401,{code:'LOGIN_REQUIRED'}); return true; }
       if (path === '/api/life-guide/profile') {
         if (req.method === 'GET') { const profile=await store.getProfile(session.device); json(res,200,{profile:profile ? parseChildProfile(profile) : null}); return true; }

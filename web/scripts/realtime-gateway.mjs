@@ -105,7 +105,8 @@ export function attachRealtime(server, options = {}) {
       // One pending ticket per browser; tickets are one-use and expire quickly.
       for (const [key, value] of tickets) if (value.owner === owner) tickets.delete(key);
       const token = randomBytes(32).toString('hex');
-      tickets.set(token, { owner, lifeGuide, profile, previous:memoryHint(body.previous)?body.previous:null, expires: Date.now() + 20000 });
+      const recorder = await options.accounts?.recording(req);
+      tickets.set(token, { owner, lifeGuide, profile, recorder, previous:options.accounts ? recorder?.previous : memoryHint(body.previous)?body.previous:null, expires: Date.now() + 20000 });
       const secure = req.headers.origin?.startsWith('https:') ? '; Secure' : '';
       res.setHeader('Set-Cookie', `momo_rt=${owner}; HttpOnly; SameSite=Strict; Path=/api/realtime${secure}`);
       json(res, 200, { token });
@@ -124,7 +125,10 @@ export function attachRealtime(server, options = {}) {
     awaitingAuth.add(client);
     let upstream, ready = false, finished = false, responseId = null;
     let planner, profile=null, responseInFlight = false, cancelRequested = false, pendingTurn = false;
-    let previous=null;
+    let previous=null, recorder=null;
+    function logTurn(key,role,transcript) {
+      if (recorder) void recorder.append(key,role,transcript).catch(()=>console.error('ACCOUNT_LOG_WRITE_FAILED'));
+    }
     const reader=createReader();
     let turnInstructions, usedLookup = false;
     let guideUpdates = [];
@@ -173,7 +177,7 @@ export function attachRealtime(server, options = {}) {
         awaitingAuth.delete(client);
         tickets.delete(auth.token);
         planner = new LifeGuidePlanner(grant.lifeGuide, options.random ?? Math.random);
-        profile=grant.profile; previous=grant.previous;
+        profile=grant.profile; previous=grant.previous; recorder=grant.recorder;
         active.get(client).token = auth.token;
         upstream = new WebSocket(upstreamURL, {
           headers: { Authorization:`Bearer ${apiKey}` }, maxPayload:1024 * 1024, handshakeTimeout:10000, perMessageDeflate:false,
@@ -193,6 +197,7 @@ export function attachRealtime(server, options = {}) {
           if (event.type === 'session.updated' && !ready) {
             ready = true; clearTimeout(handshakeTimer); send({type:'ready'});
           } else if (event.type === 'conversation.item.input_audio_transcription.completed') {
+            logTurn(event.item_id,'child',event.transcript);
             const face = expressionFor(event.transcript);
             if(face) send({type:'expression',face});
             const topic=classifyTopic(event.transcript);
@@ -210,6 +215,9 @@ export function attachRealtime(server, options = {}) {
           else if (event.type === 'response.created') {
             responseId = event.response?.id; responseInFlight = true;
             if (cancelRequested) cancelResponse(); else send({type:'response.started'});
+          }
+          else if (event.type === 'response.output_audio_transcript.done' && !cancelled.has(event.response_id)) {
+            logTurn(event.item_id,'momo',event.transcript);
           }
           else if (event.type === 'response.output_audio.delta' && !cancelled.has(event.response_id)) {
             if (typeof event.delta !== 'string') { finish('UPSTREAM_PROTOCOL'); return; }

@@ -1,3 +1,4 @@
+import { attachAccounts } from './accounts.mjs';
 import { serveBooks } from './book-store.mjs';
 import { createServer } from 'node:http';
 import { attachRealtime } from './realtime-gateway.mjs';
@@ -26,7 +27,7 @@ export function createAppServer(root = defaultRoot, realtimeOptions = {}, storag
       res.end(req.method === 'HEAD' ? undefined : message);
     };
     if (serveBooks(req, res)) return;
-    if (await storage.handle(req, res) || await realtime.handle(req, res)) return;
+    if (await accounts.handle(req,res) || await storage.handle(req, res) || await realtime.handle(req, res)) return;
     if (req.method !== 'GET' && req.method !== 'HEAD') {
       res.setHeader('Allow', 'GET, HEAD'); reply(405, 'Method not allowed'); return;
     }
@@ -61,8 +62,9 @@ export function createAppServer(root = defaultRoot, realtimeOptions = {}, storag
       else reply(404, 'Not found');
     }
   });
-  realtime = attachRealtime(server, realtimeOptions);
-  storage = attachLifeGuideStorage(server, storageOptions);
+  const accounts = attachAccounts(server);
+  realtime = attachRealtime(server, {...realtimeOptions, accounts});
+  storage = attachLifeGuideStorage(server, {...storageOptions, accounts});
   return server;
 }
 

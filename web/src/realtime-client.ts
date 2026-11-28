@@ -1,4 +1,3 @@
-import {openMemory, saveMemory} from './device-memory';
 import { emptyLifeGuide, type LifeGuide } from '../shared/life-guide.mjs';
 import { REALTIME_POLICY } from '../shared/realtime-policy.mjs';
 import { type ChildProfile } from '../shared/child-profile.mjs';
@@ -86,11 +85,11 @@ export class RealtimeConversation {
       stream.getTracks().forEach(track => { track.onended = () => this.fail('MICROPHONE_UNAVAILABLE'); });
       await context.audioWorklet.addModule(new URL('realtime-worklet.js', document.baseURI).href);
       if (controller.signal.aborted) return;
-      const memory=openMemory();
+
       const response = await fetch('/api/realtime/session', {
         method:'POST', credentials:'same-origin', signal:controller.signal,
         headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({consent:true,policy:REALTIME_POLICY,accessCode,previous:memory.memory,lifeGuide:this.lifeGuide,profile:this.childProfile}),
+        body:JSON.stringify({consent:true,policy:REALTIME_POLICY,accessCode,lifeGuide:this.lifeGuide,profile:this.childProfile}),
       });
       const grant = await response.json();
       if (!response.ok) throw new Error(grant.code || 'NETWORK_ERROR');
@@ -113,7 +112,6 @@ export class RealtimeConversation {
           if(message.type==='expression'){this.callbacks.expression(message.face);return;}
           if(message.type==='speech.started')this.callbacks.expression('');
           if(message.type==='reading.cue'){this.callbacks.readingCue?.(message.role,message.text);return;}
-          if (message.type === 'memory.topic') {saveMemory(memory.epoch,{topic:message.topic,at:message.at});return;}
           if (message.type === 'ready') {
             // Capture edits made while HTTP admission or the provider handshake was pending.
             socket.send(JSON.stringify({type:'life_guide.update',lifeGuide:this.lifeGuide}));

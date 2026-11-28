@@ -1,6 +1,7 @@
+import {enter,credentials} from './account-helpers';
 import { test, expect, type Page } from '@playwright/test';
 import { REALTIME_POLICY } from '../shared/realtime-policy.mjs';
-async function localConsent(page:Page) {await page.locator('#login-button').click();await page.locator('#login-continue').click();await page.locator('#consent-checkbox').check();await page.locator('#consent-accept').click();await page.locator('#profile-skip').click();}
+async function localConsent(page:Page) {await enter(page);}
 async function connect(page:Page) {await localConsent(page);await page.locator('#realtime-consent').check();await expect(page.locator('#realtime-connect')).toBeEnabled();await page.locator('#realtime-connect').click();}
 test.beforeEach(async({page})=>{
   await page.addInitScript(()=>{
@@ -17,13 +18,13 @@ test('removed connection-summary card is absent and real conversation is present
   await page.goto('./');await expect(page.locator('.session-card')).toHaveCount(0);
   await expect(page.getByText('지금의 연결 상태',{exact:true})).toHaveCount(0);
   await expect(page.getByRole('heading',{name:'모모와 지금 이야기해요'})).toBeVisible();
-  await expect(page.locator('.realtime-consent')).toHaveText('음성을 OpenAI로 실시간 전송하고, 이 브라우저에 최근 대화 주제 하나를 최대 48시간 기억하는 데 동의합니다.');
+  await expect(page.locator('.realtime-consent')).toHaveText('음성을 OpenAI로 실시간 전송하고, 로그인한 계정에 대화 텍스트를 최대 48시간 저장하는 데 동의합니다.');
   await expect(page.locator('.conversation-hint')).toHaveCount(0);
   expect(await page.evaluate(()=>(window as any).__micCalls)).toBe(0);
 });
 test('local and separate external-transmission consent are both required',async({page})=>{
   await page.goto('./');await expect(page.locator('#realtime-connect')).toBeEnabled();await page.locator('#realtime-connect').click();
-  await page.locator('#login-continue').click();await expect(page.locator('#consent-dialog')).toBeVisible();await page.locator('#consent-checkbox').check();await page.locator('#consent-accept').click();await page.locator('#profile-skip').click();
+  await credentials(page);await expect(page.locator('#consent-dialog')).toBeVisible();await page.locator('#consent-checkbox').check();await page.locator('#consent-accept').click();await page.locator('#profile-skip').click();
   await page.locator('#realtime-connect').click();await expect(page.locator('#toast')).toContainText('실시간 음성 전송');
   expect(await page.evaluate(()=>(window as any).__micCalls)).toBe(0);
 });
@@ -54,7 +55,7 @@ test('withdrawing external consent or ending trial login closes microphone and r
   await page.locator('#realtime-consent').check();await page.locator('#realtime-connect').click();
   await expect(page.locator('#realtime-status')).toHaveText('듣고 있어요');
   await page.locator('#login-button').click();await expect(page.locator('#realtime-consent')).not.toBeChecked();
-  await expect(page.locator('#login-button')).toHaveText('체험 로그인');
+  await expect(page.locator('#login-button')).toHaveText('로그인');
   expect(await page.evaluate(()=>(window as any).__tracks.every((t:MediaStreamTrack)=>t.readyState==='ended'))).toBe(true);
 });
 test('cancel while permission is pending cannot activate a late microphone',async({page})=>{

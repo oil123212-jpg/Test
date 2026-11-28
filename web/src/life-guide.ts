@@ -1,5 +1,4 @@
 import { emptyLifeGuide, LIFE_ACTIVITIES, parseLifeGuide, slotLabel, type LifeActivity, type LifeGuide } from '../shared/life-guide.mjs';
-import { PARENT_SETTINGS_POLICY } from '../shared/child-profile.mjs';
 export function mountLifeGuide(onChange: (guide: LifeGuide) => void, requestLogin: () => void, onSession: (loggedIn:boolean,error?:unknown) => void) {
   const element = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
   const enabled = element<HTMLInputElement>('life-guide-enabled');
@@ -8,7 +7,7 @@ export function mountLifeGuide(onChange: (guide: LifeGuide) => void, requestLogi
   let guide = emptyLifeGuide();
   let draftSlots = emptyLifeGuide().slots;
   let draftDirty = false;
-  let loggedIn = false, busy = false, generation = 0, sessionId: string | null = null;
+  let loggedIn = false, busy = false, generation = 0;
   let controller: AbortController | null = null;
   const channel = typeof BroadcastChannel === 'function' ? new BroadcastChannel('momo.life-guide') : null;
   let deviceZone = 'Asia/Seoul';
@@ -105,25 +104,12 @@ export function mountLifeGuide(onChange: (guide: LifeGuide) => void, requestLogi
     const id = ++generation; controller?.abort(); controller = new AbortController();
     busy = true; controls(); status.textContent = 'DB에서 이 브라우저의 생활 시간을 불러오고 있어요…';
     try {
-      const result = await api('POST','/login',{consent:true,policy:PARENT_SETTINGS_POLICY},controller.signal);
-      if (id !== generation) return;
-      sessionId = result.sessionId;
       const saved = await api('GET','',undefined,controller.signal);
       if (id !== generation) return;
       guide = saved.schedule ? parseLifeGuide({...saved.schedule,enabled:false}) : emptyLifeGuide();
       loggedIn = true; onChange(guide); render();
       onSession(true);
       status.textContent = saved.schedule ? 'DB에서 생활 시간을 불러왔어요. 라이프가이드 연결은 직접 켜 주세요.' : '아직 저장한 생활 시간이 없어요. 시간을 선택해 DB에 저장해 주세요.';
-      // Preserve an old local time table as an unsaved draft; never upload silently.
-      if (!saved.schedule) {
-        try {
-          const legacy = localStorage.getItem('momo.life-guide.v1');
-          if (legacy) {
-            guide = {...parseLifeGuide(JSON.parse(legacy)),enabled:false}; render();
-            status.textContent = '기존 브라우저의 시간을 불러왔어요. 아직 DB에 저장되지 않았어요. 저장하고 적용을 눌러 주세요.';
-          }
-        } catch {}
-      }
       if (pendingDraft) {
         renderDraft(pendingDraft); draftDirty = true;
         status.textContent = '선택한 시간을 유지했어요. 저장하고 적용을 눌러 주세요.';
@@ -134,11 +120,8 @@ export function mountLifeGuide(onChange: (guide: LifeGuide) => void, requestLogi
   function logout() {
     generation++; controller?.abort(); controller = null; loggedIn = false; busy = false;
     onSession(false);
-    guide = emptyLifeGuide(); onChange(guide); render(); status.textContent = '체험 로그인 후 저장된 생활 시간을 불러올 수 있어요.';
-    if (sessionId) {
-      const token = sessionId; sessionId = null;
-      void fetch('/api/life-guide/logout',{method:'POST',credentials:'same-origin',keepalive:true,headers:{'X-Device-Session':token}}).catch(()=>{});
-    }
+    guide = emptyLifeGuide(); onChange(guide); render(); status.textContent = '로그인 후 저장된 생활 시간을 불러올 수 있어요.';
+    draftDirty = false;
   }
   element('life-guide-login').addEventListener('click',requestLogin);
   element('life-guide-form').addEventListener('submit', async event => {
@@ -181,6 +164,6 @@ export function mountLifeGuide(onChange: (guide: LifeGuide) => void, requestLogi
     finally { if(id === generation) {busy = false; controls();} }
   };
   render();
-  status.textContent = '체험 로그인 후 저장된 생활 시간을 불러올 수 있어요.';
+  status.textContent = '로그인 후 저장된 생활 시간을 불러올 수 있어요.';
   return { current: () => guide, login, logout };
 }

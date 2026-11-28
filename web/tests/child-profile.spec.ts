@@ -1,7 +1,8 @@
+import {enter,credentials} from './account-helpers';
 import {test,expect,type Page} from '@playwright/test';
 test.skip(process.env.WEB_SERVER_TARGET!=='realtime','Requires production API fixture; use npm run test:realtime.');
 async function login(page:Page) {
-  await page.locator('#login-button').click();await page.locator('#login-continue').click();await page.locator('#consent-checkbox').check();await page.locator('#consent-accept').click();await page.locator('#profile-skip').click();
+  await enter(page);
   await expect(page.locator('#life-guide-login')).toBeHidden();await expect(page.locator('#profile-status')).not.toContainText('불러오고 있어요');
   await expect(page.locator('#profile-save')).toBeEnabled();
 }
@@ -43,7 +44,7 @@ test('SQL profile round trip survives relogin and deletion leaves the life sched
 test('profile entry follows consent and failed SQL saves do not claim success',async({page})=>{
   await page.goto('./');await page.locator('#open-settings').click();
   await expect(page.locator('#profile-name')).toBeHidden();
-  await page.locator('#profile-login').click();await page.locator('#login-continue').click();
+  await page.locator('#profile-login').click();await credentials(page);
   await page.locator('#consent-checkbox').check();await page.locator('#consent-accept').click();
   await expect(page.locator('#settings-title')).toHaveText('아이 정보 입력');
   await fill(page);

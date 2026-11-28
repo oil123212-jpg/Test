@@ -16,3 +16,9 @@
 #login-continue {width:100%;background:#194c3e;color:white}
 #settings-dialog[data-onboarding] .settings-tabs,#settings-dialog[data-onboarding] #forget-topic,#settings-dialog[data-onboarding] #forget-topic+p {display:none}
 #profile-skip {width:100%;margin-top:12px}
+
+#account-login-form {display:grid;gap:10px;text-align:left}
+#account-login-form input {width:100%;padding:12px;border:1px solid #84998b;border-radius:9px}
+#account-login-form label {font-weight:650}
+#login-google {width:100%;margin-top:14px}
+#account-error:empty {display:none}
